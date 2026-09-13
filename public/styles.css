@@ -150,6 +150,8 @@ input:not([type=checkbox]):focus{outline:3px solid #ffbaba;outline-offset:2px}
 .delivery-panel small{display:block;color:#555;margin-top:15px}
 .tracking-panel{padding:30px 28px 48px;margin-top:-18px;min-height:550px}
 .tracking-panel>h1{font-size:2.15rem;line-height:1.2;margin:22px 8px 4px}
+.tracking-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:22px 8px 4px}
+.tracking-heading h1{font-size:2.15rem;line-height:1.2;margin:0}
 .tracking-note{margin:0 8px 18px;color:#555}
 .tracking-list{display:grid;gap:12px}
 .tracking-list .loading{color:#222}
@@ -171,9 +173,10 @@ input:not([type=checkbox]):focus{outline:3px solid #ffbaba;outline-offset:2px}
 .tracking-status{font-size:1.25rem;font-weight:700;text-align:right;line-height:1.25}
 .tracking-status.pending,.tracking-status.cancelled{color:#ff3838}
 .tracking-status.paid{color:#69c943}
-.tracking-lookup-trigger{width:calc(100% - 20px);margin:22px 10px 0;padding:16px 23px;border:2px solid #111;border-radius:25px;background:#fff;color:#111;display:flex;align-items:center;justify-content:space-between;gap:16px;text-align:left;font-weight:700}
-.tracking-lookup-trigger:hover{background:#f1f7fc}
-.tracking-lookup-trigger span:last-child{font-size:1.4rem;line-height:1}
+.tracking-lookup-trigger{flex:none;min-height:48px;padding:8px 18px;border:2px solid #111;border-radius:999px;background:#111;color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:5px;font-weight:700}
+.tracking-lookup-trigger:hover{background:#333}
+.tracking-search-icon{position:relative;width:14px;height:14px;border:2px solid #fff;border-radius:50%;margin:0 5px 4px 6px}
+.tracking-search-icon:after{content:"";position:absolute;width:8px;height:2px;background:#fff;transform:rotate(45deg);left:10px;top:11px}
 .track-dialog{width:min(580px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;border:2px solid #111;border-radius:32px;background:#fff;color:#111;padding:30px;box-shadow:0 24px 80px rgba(0,0,0,.32)}
 .track-dialog::backdrop{background:rgba(0,0,0,.72)}
 .track-dialog-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}
@@ -223,7 +226,7 @@ input:not([type=checkbox]):focus{outline:3px solid #ffbaba;outline-offset:2px}
   .showcase{grid-template-columns:26px 1fr 26px;gap:3px;min-height:360px}.showcase-side{display:none}.showcase-feature{height:345px}.showcase-feature .book-cover{transform:scale(1.05)}.showcase-arrow{font-size:3rem}.showcase-actions{padding-top:12px}
   .detail-panel{display:block;padding:22px}.detail-cover{min-height:260px}.detail-cover .book-cover{transform:scale(.95)}.detail-copy{padding-top:23px}.detail-copy h2{font-size:2rem}.detail-subtitle{font-size:1.1rem}.detail-meta{gap:18px;font-size:.88rem}.detail-actions .pill-button{flex:1}
   .order-tabs a{font-size:.78rem;white-space:normal;min-height:47px;display:grid;place-items:center}.cart-panel>h1,.tracking-panel>h1{font-size:1.5rem;margin:15px 4px}
-  .tracking-panel{border-radius:30px;padding:23px 12px 30px}.tracking-note{font-size:.78rem;margin:0 4px 13px}.tracking-row{grid-template-columns:82px minmax(0,1fr);gap:10px;border-radius:20px;padding:9px}.tracking-cover{height:110px;border-radius:14px}.tracking-cover .book-cover{width:75px;height:103px;box-shadow:3px 4px 6px rgba(0,0,0,.2)}.tracking-copy h2{font-size:.94rem}.tracking-copy p{font-size:.75rem}.tracking-description{display:none}.tracking-copy strong{font-size:1rem;margin-top:4px}.tracking-copy small{font-size:.65rem}.tracking-side{grid-column:1/-1;flex-direction:row;align-items:center;padding:0;flex-wrap:wrap}.tracking-actions{flex-wrap:nowrap}.tracking-button{min-height:38px;min-width:0;padding:5px 11px;font-size:.76rem}.tracking-status{font-size:.82rem}.tracking-lookup-trigger{width:100%;margin:15px 0 0;padding:12px;font-size:.84rem}.track-dialog{width:calc(100vw - 22px);padding:23px 19px;border-radius:25px}.track-dialog-head h2{font-size:1.5rem}.track-dialog-head p{font-size:.88rem}.track-dialog-actions{display:grid;grid-template-columns:1fr 1fr}.track-dialog-actions .pill-button{padding:9px 12px}
+  .tracking-panel{border-radius:30px;padding:23px 12px 30px}.tracking-heading{margin:15px 4px 10px;gap:8px}.tracking-heading h1{font-size:1.2rem;white-space:nowrap}.tracking-note{font-size:.78rem;margin:0 4px 13px}.tracking-row{grid-template-columns:82px minmax(0,1fr);gap:10px;border-radius:20px;padding:9px}.tracking-cover{height:110px;border-radius:14px}.tracking-cover .book-cover{width:75px;height:103px;box-shadow:3px 4px 6px rgba(0,0,0,.2)}.tracking-copy h2{font-size:.94rem}.tracking-copy p{font-size:.75rem}.tracking-description{display:none}.tracking-copy strong{font-size:1rem;margin-top:4px}.tracking-copy small{font-size:.65rem}.tracking-side{grid-column:1/-1;flex-direction:row;align-items:center;padding:0;flex-wrap:wrap}.tracking-actions{flex-wrap:nowrap}.tracking-button{min-height:38px;min-width:0;padding:5px 11px;font-size:.76rem}.tracking-status{font-size:.82rem}.tracking-lookup-trigger{width:42px;min-height:42px;padding:0}.tracking-search-label{display:none}.tracking-search-icon{margin-left:0}.track-dialog{width:calc(100vw - 22px);padding:23px 19px;border-radius:25px}.track-dialog-head h2{font-size:1.5rem}.track-dialog-head p{font-size:.88rem}.track-dialog-actions{display:grid;grid-template-columns:1fr 1fr}.track-dialog-actions .pill-button{padding:9px 12px}
   .cart-row{grid-template-columns:25px 78px 1fr 24px;gap:7px;min-height:136px;padding:9px}.cart-cover{height:112px}.cart-cover .book-cover{width:54px;height:78px;transform:none;box-shadow:3px 4px 6px rgba(0,0,0,.2)}.cart-copy h2{font-size:.92rem}.cart-copy p{font-size:.74rem;margin:1px 0}.cart-copy p:nth-of-type(2){display:none}.cart-copy strong{font-size:.95rem}.remove-button{font-size:1.8rem;width:24px;height:28px}
   .cart-total{border-radius:25px;display:block;padding:12px 14px;font-size:1.05rem}.cart-total span{margin-bottom:11px}.cart-total .pill-button{width:100%;min-width:0;min-height:48px}
   .checkout-panel,.status-panel{border-radius:30px;padding:24px 20px}.checkout-title h2,.status-panel-head h2{font-size:1.45rem;word-break:break-word}.demo-note{display:block;padding:12px;font-size:.85rem}.demo-note strong{display:inline-block;margin-right:6px}
