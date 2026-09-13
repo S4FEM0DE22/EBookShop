@@ -4,6 +4,8 @@ Production URL: https://safemode-shop.vercel.app/
 
 เว็บร้าน E-book สาธิตตามใบงาน Vibe Coding 2026 ปรับหน้าตาตามภาพต้นแบบ SAFE MODE SHOP: โทนขาวดำ, เมนูทรงแคปซูล, หน้าแรกแบบสไลด์, แค็ตตาล็อก, ตะกร้า, ติดตามคำสั่งซื้อ และโปรไฟล์ในเบราว์เซอร์ แค็ตตาล็อกใช้ PDF ที่ผู้ใช้ให้มา 4 ไฟล์แทนหนังสือตัวอย่างเดิม เลือกซื้อพร้อมกันได้สูงสุด 4 เล่ม แล้ว Checkout เป็นคำสั่งซื้อ `PENDING` หน้าติดตามแสดงรายการเป็นแถวพร้อมปุ่มชำระหรือยกเลิก เปลี่ยนสถานะเป็น `PAID` หรือ `CANCELLED` และแสดงลิงก์ดาวน์โหลดของแต่ละเล่มหลัง PAID ไม่มีการรับเงินจริง
 
+หน้าร้านลูกค้าอยู่ที่ `/` ส่วนหน้าผู้ดูแลอยู่ที่ `/admin/` และใช้ดีไซน์แยกกัน หลังบ้านมีภาพรวม ค้นหาคำสั่งซื้อ เปลี่ยนสถานะด้วยการชำระเงินจำลอง ยกเลิกรายการที่ยังรอชำระ ลองส่งอีเมลอีกครั้งเมื่อเปิดใช้ Resend และเปิด/ซ่อนหนังสือปัจจุบันจากหน้าร้าน ข้อมูลลูกค้าและคำสั่งซื้อทั้งหมดผ่าน API ที่ต้องล็อกอินเท่านั้น
+
 ## หนังสือที่แสดงในร้าน
 
 | ไฟล์ใน private-books | รายการ | หน้า | ราคาจำลอง |
@@ -27,6 +29,8 @@ npm run dev
 
 หากต้องการทดสอบกับ Supabase ในเครื่อง ให้ใส่ `SUPABASE_URL`, `SUPABASE_SECRET_KEY` และ `DOWNLOAD_SECRET` ใน `.env.local` (ไฟล์นี้ถูกละเว้นจาก Git) แล้วรัน `npm run dev:supabase` แทน `npm run dev` โดยหยุดเซิร์ฟเวอร์เดิมก่อน ไฟล์ `.env.example` เป็นเพียงตัวอย่างและห้ามใส่ secret จริง
 
+การเข้าหลังบ้านต้องตั้ง `ADMIN_PASSWORD` เป็นรหัสสุ่มที่ยาวอย่างน้อย 20 ตัวอักษรใน `.env.local` หรือ Environment Variables ของ Vercel ก่อนเปิด `/admin/` รหัสนี้ใช้เฉพาะเซิร์ฟเวอร์ ไม่บันทึกลง GitHub ระบบออก cookie `HttpOnly`, `SameSite=Strict` อายุ 8 ชั่วโมง และตรวจสิทธิ์ทุกคำขอของหลังบ้าน การกดออกจากระบบล้าง cookie ในเบราว์เซอร์ หากต้องการปิด session ที่ออกไปแล้วทั้งหมด ให้เปลี่ยน `DOWNLOAD_SECRET` แล้ว redeploy ด้วย (จะทำให้ลิงก์ดาวน์โหลดเก่าหมดอายุด้วย)
+
 หน้าติดตามแสดงคำสั่งซื้อที่สร้างหรือค้นพบใน session นี้ตามภาพต้นแบบ พร้อมสถานะ ปุ่ม Mock Payment และปุ่มยกเลิกสำหรับรายการที่ยัง `PENDING` หากต้องการดูคำสั่งซื้อที่ไม่ได้อยู่ใน session ให้กดปุ่มค้นหาเพื่อเปิด Modal แล้วกรอกเลขคำสั่งซื้อกับอีเมล หน้าประวัติแสดงทั้งรายการที่ชำระแล้วและรายการที่ยกเลิก
 
 ```powershell
@@ -38,7 +42,7 @@ npm test
 1. สร้าง Supabase project แล้วรัน [schema.sql](supabase/schema.sql) ใน SQL Editor จะได้ตาราง `books`, `orders` ที่เปิด RLS และ private Storage bucket ชื่อ `ebooks`
 2. อัปโหลดเฉพาะ PDF ทั้ง 4 ไฟล์ในตารางข้างบนจาก `private-books/` ไปยัง bucket `ebooks` โดยคงชื่อไฟล์เดิม และตรวจว่า bucket **ไม่เป็น public**
 3. สร้าง Resend API key และยืนยันโดเมนผู้ส่ง แล้วใช้ที่อยู่นั้นใน `EMAIL_FROM` ถ้าใช้โดเมนทดสอบของ Resend อาจส่งได้เฉพาะอีเมลบัญชีผู้สร้าง
-4. ตั้งค่า Environment Variables ใน Vercel ตาม [.env.example](.env.example): ต้องมี `SUPABASE_URL`, `SUPABASE_SECRET_KEY` และ `DOWNLOAD_SECRET`; เพิ่ม `RESEND_API_KEY` กับ `EMAIL_FROM` เมื่อพร้อมส่งอีเมลจริง ส่วน `PUBLIC_SITE_URL` ไม่จำเป็นหากใช้ URL ของคำขอ ห้ามนำ secret ใส่หน้าเว็บหรือ GitHub
+4. ตั้งค่า Environment Variables ใน Vercel ตาม [.env.example](.env.example): ต้องมี `SUPABASE_URL`, `SUPABASE_SECRET_KEY` และ `DOWNLOAD_SECRET`; เพิ่ม `ADMIN_PASSWORD` เพื่อเปิดหลังบ้าน และเพิ่ม `RESEND_API_KEY` กับ `EMAIL_FROM` เมื่อพร้อมส่งอีเมลจริง ส่วน `PUBLIC_SITE_URL` ไม่จำเป็นหากใช้ URL ของคำขอ ห้ามนำ secret ใส่หน้าเว็บหรือ GitHub
 5. เชื่อม repository กับ Vercel แล้ว deploy โดยใช้ root directory ของโปรเจกต์นี้ โปรเจกต์กำหนด `framework: null` และ output directory เป็น `public` ใน `vercel.json` แล้ว ไม่ต้องมี build command จากนั้นเปิด Production URL เพื่อทดสอบครบ flow
 
 `SUPABASE_SECRET_KEY` เป็น secret key รูปแบบใหม่ (`sb_secret_...`) หรือ service_role key แบบเดิม ใช้เฉพาะ server function เท่านั้น `DOWNLOAD_SECRET` ต้องเป็นสตริงสุ่มอย่างน้อย 32 ตัวอักษร เมื่อเปลี่ยนค่าตัวแปรให้ redeploy

@@ -10,7 +10,8 @@ const routes = new Map([
   ['/api/order', () => import('./api/order.js')],
   ['/api/pay', () => import('./api/pay.js')],
   ['/api/cancel', () => import('./api/cancel.js')],
-  ['/api/download', () => import('./api/download.js')]
+  ['/api/download', () => import('./api/download.js')],
+  ['/api/admin', () => import('./api/admin.js')]
 ]);
 const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg', '.png': 'image/png' };
 
@@ -24,7 +25,7 @@ createServer(async (req, res) => {
       const request = new Request(url, { method: req.method, headers: req.headers, body: ['GET', 'HEAD'].includes(req.method) ? undefined : Buffer.concat(chunks) });
       response = await (await routes.get(url.pathname)()).default.fetch(request);
     } else {
-      const safePath = url.pathname === '/' ? '/index.html' : url.pathname;
+      const safePath = url.pathname === '/' ? '/index.html' : url.pathname === '/admin/' || url.pathname === '/admin' ? '/admin/index.html' : url.pathname;
       if (!/^\/[a-zA-Z0-9_./-]+$/.test(safePath) || safePath.includes('..') || safePath.startsWith('/private-books') || safePath.startsWith('/lib')) {
         res.writeHead(404).end(); return;
       }
