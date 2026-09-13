@@ -39,7 +39,7 @@
 
 | รายการ | สถานะ / หลักฐานที่ต้องแนบ |
 | --- | --- |
-| Supabase books/orders, RLS และ private bucket | ยังไม่เชื่อมบัญชี; รัน `supabase/schema.sql` และอัปโหลด PDF |
+| Supabase books/orders, RLS และ private bucket | เชื่อมต่อฐานข้อมูลได้แล้ว: อ่านหนังสือ 4 รายการและตาราง orders ได้, bucket `ebooks` เป็น private; ยังไม่มี PDF ใน bucket จึงยังไม่ผ่านการทดสอบดาวน์โหลดบน Supabase |
 | Resend ส่งอีเมลจริง | ยังไม่มี API key และโดเมนผู้ส่ง; แนบภาพอีเมลที่ได้รับหลัง PAID |
 | GitHub repository ไม่มี secret | ยังไม่มี repository ที่เชื่อมได้; ตรวจ `.env` ไม่ถูก commit |
 | Vercel Production URL | ยังไม่เผยแพร่; แนบ URL และภาพทดสอบ flow บน production |
