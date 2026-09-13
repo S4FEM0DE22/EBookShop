@@ -1,5 +1,7 @@
 # SAFE MODE SHOP — E-book Shop Demo
 
+Production URL: https://safemode-shop.vercel.app/
+
 เว็บร้าน E-book สาธิตตามใบงาน Vibe Coding 2026 ปรับหน้าตาตามภาพต้นแบบ SAFE MODE SHOP: โทนขาวดำ, เมนูทรงแคปซูล, หน้าแรกแบบสไลด์, แค็ตตาล็อก, ตะกร้า, ติดตามคำสั่งซื้อ และโปรไฟล์ในเบราว์เซอร์ แค็ตตาล็อกใช้ PDF ที่ผู้ใช้ให้มา 4 ไฟล์แทนหนังสือตัวอย่างเดิม เลือกซื้อพร้อมกันได้สูงสุด 4 เล่ม แล้ว Checkout เป็นคำสั่งซื้อ `PENDING` หน้าติดตามแสดงรายการเป็นแถวพร้อมปุ่มชำระหรือยกเลิก เปลี่ยนสถานะเป็น `PAID` หรือ `CANCELLED` และแสดงลิงก์ดาวน์โหลดของแต่ละเล่มหลัง PAID ไม่มีการรับเงินจริง
 
 ## หนังสือที่แสดงในร้าน
@@ -36,8 +38,8 @@ npm test
 1. สร้าง Supabase project แล้วรัน [schema.sql](supabase/schema.sql) ใน SQL Editor จะได้ตาราง `books`, `orders` ที่เปิด RLS และ private Storage bucket ชื่อ `ebooks`
 2. อัปโหลดเฉพาะ PDF ทั้ง 4 ไฟล์ในตารางข้างบนจาก `private-books/` ไปยัง bucket `ebooks` โดยคงชื่อไฟล์เดิม และตรวจว่า bucket **ไม่เป็น public**
 3. สร้าง Resend API key และยืนยันโดเมนผู้ส่ง แล้วใช้ที่อยู่นั้นใน `EMAIL_FROM` ถ้าใช้โดเมนทดสอบของ Resend อาจส่งได้เฉพาะอีเมลบัญชีผู้สร้าง
-4. ตั้งค่า Environment Variables ใน Vercel ตาม [.env.example](.env.example): `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `RESEND_API_KEY`, `EMAIL_FROM`, `DOWNLOAD_SECRET`, `PUBLIC_SITE_URL` ห้ามนำ secret ใส่หน้าเว็บหรือ GitHub
-5. เชื่อม repository กับ Vercel แล้ว deploy โดยใช้ root directory ของโปรเจกต์นี้ ไม่ต้องมี build command จากนั้นเปิด Production URL เพื่อทดสอบครบ flow
+4. ตั้งค่า Environment Variables ใน Vercel ตาม [.env.example](.env.example): ต้องมี `SUPABASE_URL`, `SUPABASE_SECRET_KEY` และ `DOWNLOAD_SECRET`; เพิ่ม `RESEND_API_KEY` กับ `EMAIL_FROM` เมื่อพร้อมส่งอีเมลจริง ส่วน `PUBLIC_SITE_URL` ไม่จำเป็นหากใช้ URL ของคำขอ ห้ามนำ secret ใส่หน้าเว็บหรือ GitHub
+5. เชื่อม repository กับ Vercel แล้ว deploy โดยใช้ root directory ของโปรเจกต์นี้ โปรเจกต์กำหนด `framework: null` และ output directory เป็น `public` ใน `vercel.json` แล้ว ไม่ต้องมี build command จากนั้นเปิด Production URL เพื่อทดสอบครบ flow
 
 `SUPABASE_SECRET_KEY` เป็น secret key รูปแบบใหม่ (`sb_secret_...`) หรือ service_role key แบบเดิม ใช้เฉพาะ server function เท่านั้น `DOWNLOAD_SECRET` ต้องเป็นสตริงสุ่มอย่างน้อย 32 ตัวอักษร เมื่อเปลี่ยนค่าตัวแปรให้ redeploy
 
