@@ -43,7 +43,7 @@ on conflict (id) do update set public = false;
 -- Keep historical demo orders readable while removing sample books from the storefront.
 update public.books set active = false where id in ('vibe-coding', 'web-design', 'launch-guide');
 
--- Prices are provisional until the shop owner confirms them.
+-- Prices are sample amounts for the mock checkout; no real payment is collected.
 insert into public.books (id, title, subtitle, description, price, author, cover, file, active)
 values
 ('media-player-pro', 'รายงานการพัฒนา Media Player PRO', 'ใบงานที่ 1 · โปรแกรมเล่นเพลง', 'รายงาน 10 หน้าเกี่ยวกับการออกแบบและพัฒนาโปรแกรมเล่นเพลงด้วย Python และ PyQt6 พร้อม Playlist, Waveform, Equalizer และผลทดสอบ', 129, 'นพนันท์ ศุภมาตร์', '/assets/covers/media-player-pro.jpg', 'media-player-pro.pdf', true),

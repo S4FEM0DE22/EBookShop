@@ -4,14 +4,14 @@
 
 ## หนังสือที่แสดงในร้าน
 
-| ไฟล์ใน private-books | รายการ | หน้า | ราคาชั่วคราว |
+| ไฟล์ใน private-books | รายการ | หน้า | ราคาจำลอง |
 | --- | --- | ---: | ---: |
 | `media-player-pro.pdf` | รายงานการพัฒนา Media Player PRO | 10 | 129 บาท |
 | `tarot-app.pdf` | รายงานการพัฒนา Tarot App | 14 | 149 บาท |
 | `sqlite-task-manager-guide.pdf` | คู่มือใช้งาน SQLite Task Manager PRO | 5 | 99 บาท |
 | `sqlite-task-manager-report.pdf` | รายงานการพัฒนา SQLite Task Manager PRO | 8 | 149 บาท |
 
-ราคายังรอเจ้าของร้านยืนยัน แก้ให้ตรงกันทั้ง [catalog.js](lib/catalog.js) และ [schema.sql](supabase/schema.sql) ก่อนเผยแพร่ ภาพปกอยู่ใน `public/assets/covers/` ซึ่งแสดงได้โดยไม่เปิด PDF เต็มเล่ม ส่วน PDF จริงอยู่ใน `private-books/` และถูกละเว้นจาก Git
+ราคาในตารางใช้คำนวณยอดรวมของระบบ mock เท่านั้น หากต้องการเปลี่ยนตัวเลข ให้แก้ให้ตรงกันทั้ง [catalog.js](lib/catalog.js) และ [schema.sql](supabase/schema.sql) ภาพปกอยู่ใน `public/assets/covers/` ซึ่งแสดงได้โดยไม่เปิด PDF เต็มเล่ม ส่วน PDF จริงอยู่ใน `private-books/` และถูกละเว้นจาก Git
 
 ## ทดสอบในเครื่อง
 
