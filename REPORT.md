@@ -41,7 +41,7 @@
 | --- | --- |
 | Supabase books/orders, RLS และ private bucket | เชื่อมต่อฐานข้อมูลได้แล้ว: อ่านหนังสือ 4 รายการและตาราง orders ได้, bucket `ebooks` เป็น private; ยังไม่มี PDF ใน bucket จึงยังไม่ผ่านการทดสอบดาวน์โหลดบน Supabase |
 | Resend ส่งอีเมลจริง | ยังไม่มี API key และโดเมนผู้ส่ง; แนบภาพอีเมลที่ได้รับหลัง PAID |
-| GitHub repository ไม่มี secret | ยังไม่มี repository ที่เชื่อมได้; ตรวจ `.env` ไม่ถูก commit |
+| GitHub repository ไม่มี secret | ส่งโค้ดขึ้น [EBookShop](https://github.com/S4FEM0DE22/EBookShop) บน branch `main` แล้ว; ตรวจประวัติ Git ไม่พบ secret จริงหรือ PDF ส่วนตัว และ `.env.local` ถูกละเว้นจาก Git |
 | Vercel Production URL | ยังไม่เผยแพร่; แนบ URL และภาพทดสอบ flow บน production |
 | Android WebViewer และปุ่มย้อนกลับ | ยังไม่ได้ทดสอบบนมือถือ; ทำตาม `APP_INVENTOR.md` |
 | ไฟล์ APK และ AIA | ยังไม่ได้ build; แนบไฟล์หลังทดสอบแอป |
