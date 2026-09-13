@@ -1,0 +1,7 @@
+.env
+.env.local
+.data/
+.vercel/
+node_modules/
+tmp/
+private-books/
