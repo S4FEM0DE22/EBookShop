@@ -15,6 +15,7 @@ create table if not exists public.books (
 create table if not exists public.orders (
   id text primary key,
   book_id text not null references public.books(id),
+  book_ids text[],
   customer_name text not null,
   email text not null,
   status text not null default 'PENDING' check (status in ('PENDING', 'PAID')),
@@ -24,6 +25,7 @@ create table if not exists public.orders (
 );
 
 create index if not exists orders_email_idx on public.orders(email);
+alter table public.orders add column if not exists book_ids text[];
 
 alter table public.books enable row level security;
 alter table public.orders enable row level security;

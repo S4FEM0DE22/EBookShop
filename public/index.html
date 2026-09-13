@@ -3,20 +3,27 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#12243b">
-  <meta name="description" content="ร้าน E-book สาธิต เลือกหนังสือ สั่งซื้อ และทดลองชำระเงินโดยไม่มีการรับเงินจริง">
+  <meta name="theme-color" content="#242424">
+  <meta name="description" content="SAFE MODE SHOP ร้าน E-book สาธิต สั่งซื้อและชำระเงินจำลองโดยไม่มีการรับเงินจริง">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="stylesheet" href="/styles.css">
-  <title>Chapter & Co. — ร้าน E-book สาธิต</title>
+  <title>SAFE MODE SHOP — ร้าน E-book สาธิต</title>
 </head>
 <body>
-  <div class="demo-ribbon">DEMO ONLY · ร้านสาธิต ไม่มีการรับเงินจริง</div>
-  <header class="site-header">
-    <a class="brand" href="#home" aria-label="Chapter and Co. หน้าร้าน"><span class="brand-mark">C<span>·</span></span><span>Chapter <em>&</em> Co.</span></a>
-    <nav aria-label="เมนูหลัก"><a href="#home" id="nav-home">หนังสือทั้งหมด</a><a href="#track" id="nav-track">ติดตามคำสั่งซื้อ</a></nav>
-  </header>
-  <main id="app" tabindex="-1"><div class="loading">กำลังโหลดร้านหนังสือ…</div></main>
-  <footer class="site-footer"><span>Chapter & Co. · E-book Shop Demo</span><span>Mock payment เท่านั้น · ไม่มีการชำระเงินจริง</span></footer>
+  <div class="app-shell">
+    <header class="site-header">
+      <a class="brand" href="#home" aria-label="SAFE MODE SHOP หน้าร้าน"><img src="/assets/safe-mode-shop-white.png" alt="SAFE MODE SHOP"></a>
+      <nav class="nav-pills" aria-label="เมนูหลัก">
+        <a href="#home" data-nav="home">หน้าแรก</a>
+        <a href="#catalog" data-nav="catalog">สินค้า</a>
+        <a href="#cart" data-nav="orders">คำสั่งซื้อ <span id="cart-count" class="cart-count" hidden></span></a>
+        <a href="#profile" data-nav="profile">โปรไฟล์</a>
+        <a class="nav-exit" href="#home" aria-label="กลับหน้าแรก" title="กลับหน้าแรก">↪</a>
+      </nav>
+    </header>
+    <main id="app" tabindex="-1"><div class="loading">กำลังโหลดร้านหนังสือ…</div></main>
+    <footer class="site-footer"><span>SAFE MODE SHOP · E-book Demo</span><span>DEMO ONLY · ไม่มีการรับเงินจริง</span></footer>
+  </div>
   <script type="module" src="/app.js"></script>
 </body>
 </html>

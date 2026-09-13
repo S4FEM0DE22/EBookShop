@@ -1,6 +1,6 @@
 import { deliverEmail, downloadUrl } from '../lib/delivery.js';
 import { body, cleanEmail, fail, json, method, orderView, validateEmail } from '../lib/http.js';
-import { getBook, getOrder, updateOrder } from '../lib/store.js';
+import { getOrder, getOrderBooks, updateOrder } from '../lib/store.js';
 
 export default { async fetch(request) {
   try {
@@ -11,14 +11,14 @@ export default { async fetch(request) {
     }
     let order = await getOrder(input.id);
     if (!order || order.email !== cleanEmail(input.email)) return json({ error: 'ไม่พบคำสั่งซื้อนี้' }, 404);
-    const book = await getBook(order.book_id);
+    const books = await getOrderBooks(order);
     const origin = process.env.PUBLIC_SITE_URL?.replace(/\/$/, '') || new URL(request.url).origin;
     if (order.status !== 'PAID') order = await updateOrder(order.id, { status: 'PAID', paid_at: new Date().toISOString() });
-    let delivery = { emailStatus: order.email_status, downloadUrl: downloadUrl(order, origin) };
+    let delivery = { emailStatus: order.email_status, downloadUrls: Object.fromEntries(books.map(book => [book.id, downloadUrl(order, origin, book.id)])) };
     if (order.email_status !== 'SENT') {
-      delivery = await deliverEmail(order, book, origin);
+      delivery = await deliverEmail(order, books, origin);
       order = await updateOrder(order.id, { email_status: delivery.emailStatus });
     }
-    return json({ order: orderView(order, book, { downloadUrl: delivery.downloadUrl }) });
+    return json({ order: orderView(order, books, { downloadUrls: delivery.downloadUrls, downloadUrl: delivery.downloadUrls[books[0]?.id] }) });
   } catch (error) { return fail(error); }
 } };

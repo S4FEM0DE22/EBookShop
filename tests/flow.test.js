@@ -5,7 +5,7 @@ import ordersApi from '../api/orders.js';
 import orderApi from '../api/order.js';
 import payApi from '../api/pay.js';
 import downloadApi from '../api/download.js';
-import { signedBookUrl } from '../lib/delivery.js';
+import { makeDownloadToken, signedBookUrl } from '../lib/delivery.js';
 
 const request = (path, data) => new Request(`http://localhost:3000/api/${path}`, {
   method: data ? 'POST' : 'GET',
@@ -71,4 +71,29 @@ test('complete local demo flow and protect order lookup and download', async () 
   assert.equal(invalid.status, 403);
   const revisited = await orderApi.fetch(request('order', { id: order.id, email: order.email }));
   assert.ok((await revisited.json()).order.downloadUrl);
+});
+
+test('cart checkout keeps multiple books together and scopes each download', async () => {
+  const response = await ordersApi.fetch(request('orders', {
+    bookIds: ['vibe-coding', 'web-design'],
+    name: 'ผู้ทดสอบ',
+    email: 'cart@example.com'
+  }));
+  assert.equal(response.status, 201);
+  const created = (await response.json()).order;
+  assert.equal(created.status, 'PENDING');
+  assert.equal(created.items.length, 2);
+  assert.equal(created.price, 278);
+
+  const paid = (await (await payApi.fetch(request('pay', { id: created.id, email: created.email }))).json()).order;
+  assert.equal(paid.status, 'PAID');
+  assert.equal(Object.keys(paid.downloadUrls).length, 2);
+  for (const item of paid.items) {
+    const file = await downloadApi.fetch(new Request(paid.downloadUrls[item.id]));
+    assert.equal(file.status, 200);
+    assert.match(file.headers.get('content-disposition'), new RegExp(item.id === 'vibe-coding' ? 'vibe-coding.pdf' : 'web-design.pdf'));
+  }
+  const unrelated = makeDownloadToken({ id: created.id, book_id: 'launch-guide' });
+  const forbidden = await downloadApi.fetch(request(`download?token=${unrelated}`));
+  assert.equal(forbidden.status, 403);
 });
