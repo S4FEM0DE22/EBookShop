@@ -19,14 +19,18 @@ create table if not exists public.orders (
   book_ids text[],
   customer_name text not null,
   email text not null,
-  status text not null default 'PENDING' check (status in ('PENDING', 'PAID')),
+  status text not null default 'PENDING' check (status in ('PENDING', 'PAID', 'CANCELLED')),
   email_status text not null default 'NOT_SENT' check (email_status in ('NOT_SENT', 'DEMO', 'SENT', 'FAILED', 'NOT_CONFIGURED')),
   created_at timestamptz not null default now(),
-  paid_at timestamptz
+  paid_at timestamptz,
+  cancelled_at timestamptz
 );
 
 create index if not exists orders_email_idx on public.orders(email);
 alter table public.orders add column if not exists book_ids text[];
+alter table public.orders add column if not exists cancelled_at timestamptz;
+alter table public.orders drop constraint if exists orders_status_check;
+alter table public.orders add constraint orders_status_check check (status in ('PENDING', 'PAID', 'CANCELLED'));
 alter table public.books add column if not exists active boolean not null default true;
 
 alter table public.books enable row level security;

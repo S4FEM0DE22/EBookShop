@@ -9,6 +9,7 @@ const routes = new Map([
   ['/api/orders', () => import('./api/orders.js')],
   ['/api/order', () => import('./api/order.js')],
   ['/api/pay', () => import('./api/pay.js')],
+  ['/api/cancel', () => import('./api/cancel.js')],
   ['/api/download', () => import('./api/download.js')]
 ]);
 const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg', '.png': 'image/png' };

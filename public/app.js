@@ -37,6 +37,34 @@ function setView(html, active = '') {
 function saveCart() { writeSession('safe-cart', cart); refreshCartCount(); }
 function addToCart(id) { if (!cart.includes(id)) cart.push(id); selected.add(id); saveCart(); location.hash = '#cart'; cartPage(); }
 function orderTabs(active) { return `<div class="order-tabs" role="navigation" aria-label="ส่วนคำสั่งซื้อ"><a class="${active === 'cart' ? 'active' : ''}" href="#cart">ตะกร้าสินค้า</a><a class="${active === 'track' ? 'active' : ''}" href="#track">ติดตามคำสั่งซื้อ</a><a class="${active === 'history' ? 'active' : ''}" href="#history">ประวัติการสั่งซื้อ</a></div>`; }
+function statusInfo(order) {
+  if (order.status === 'PAID') return { className: 'paid', label: 'หนังสือพร้อมโหลด', short: 'PAID' };
+  if (order.status === 'CANCELLED') return { className: 'cancelled', label: 'ยกเลิกการสั่งซื้อ', short: 'CANCELLED' };
+  return { className: 'pending', label: 'กำลังรอการชำระ...', short: 'PENDING' };
+}
+function orderRow(order, mode = 'track') {
+  const items = order.items?.length ? order.items : [book(order.bookId)].filter(Boolean);
+  const first = items[0];
+  const status = statusInfo(order);
+  const title = first ? `${first.title}${items.length > 1 ? ` และอีก ${items.length - 1} เล่ม` : ''}` : 'รายการหนังสือ';
+  return `<article class="tracking-row">
+    <div class="tracking-cover">${first ? cover(first) : ''}</div>
+    <div class="tracking-copy"><h2>${esc(title)}</h2><p>${first ? esc(first.subtitle) : ''}</p><p class="tracking-description">${first ? esc(first.description) : ''}</p><strong>${money(order.price)}</strong><small>คำสั่งซื้อ ${esc(order.id)}</small></div>
+    <div class="tracking-side"><div class="tracking-actions">${mode === 'track' && order.status === 'PENDING' ? `<button class="tracking-button pay" type="button" data-track-pay="${esc(order.id)}">ชำระเงิน</button><button class="tracking-button cancel" type="button" data-track-cancel="${esc(order.id)}">ยกเลิก</button>` : `<button class="tracking-button view" type="button" data-open-order="${esc(order.id)}">ดูรายละเอียด${order.status === 'PAID' ? ' / ดาวน์โหลด' : ''}</button>`}</div><span class="tracking-status ${status.className}">${status.label}</span></div>
+  </article>`;
+}
+async function sessionOrders() {
+  const result = await Promise.all(receipts.map(async receipt => { try { return (await api('order', receipt)).order; } catch { return null; } }));
+  return result.filter(Boolean);
+}
+function bindOpenOrders(container, orders) {
+  container.querySelectorAll('[data-open-order]').forEach(button => button.addEventListener('click', () => {
+    currentOrder = orders.find(order => order.id === button.dataset.openOrder);
+    customerEmail = currentOrder.email;
+    location.hash = `#order/${currentOrder.id}`;
+    orderPage(currentOrder.id);
+  }));
+}
 function pageHead(title, subtitle = '') { return `<div class="page-heading"><h1>${title}</h1>${subtitle ? `<p>${subtitle}</p>` : ''}</div>`; }
 function productCard(item) { return `<article class="product-card"><a class="product-cover" href="#book/${esc(item.id)}">${cover(item)}</a><div class="product-copy"><h3>${esc(item.title)}</h3><p class="product-subtitle">${esc(item.subtitle)}</p><p class="product-description">${esc(item.description)}</p><div class="product-bottom"><strong>${money(item.price)}</strong><div><a class="text-link" href="#book/${esc(item.id)}">รายละเอียด</a><button class="pill-button dark" type="button" data-add="${esc(item.id)}">เพิ่มลงตะกร้า</button></div></div></div></article>`; }
 
@@ -102,27 +130,50 @@ function orderPage(id) {
   if (!currentOrder || currentOrder.id !== id) return track(id);
   const order = currentOrder;
   const paid = order.status === 'PAID';
+  const cancelled = order.status === 'CANCELLED';
+  const status = statusInfo(order);
   const items = order.items?.length ? order.items : [book(order.bookId)].filter(Boolean);
   const deliveryText = { SENT: 'ส่งอีเมลลิงก์ดาวน์โหลดแล้ว โปรดตรวจกล่องจดหมายและอีเมลขยะ', DEMO: 'โหมดทดสอบในเครื่อง: แสดงลิงก์ดาวน์โหลดแทนการส่งอีเมลจริง', FAILED: 'ส่งอีเมลไม่สำเร็จ ใช้ลิงก์ด้านล่างแทนได้', NOT_CONFIGURED: 'ยังไม่ได้ตั้งค่าอีเมล ใช้ลิงก์ด้านล่างแทนได้' }[order.emailStatus];
-  setView(`${orderTabs('track')}${pageHead(paid ? 'ชำระสินค้าเสร็จสิ้น' : 'รอชำระสินค้า')}
-    <section class="white-panel status-panel"><div class="status-panel-head"><div><div class="kicker">ORDER STATUS</div><h2>คำสั่งซื้อ ${esc(order.id)}</h2></div><span class="status-pill ${paid ? 'paid' : 'pending'}">${paid ? 'PAID' : 'PENDING'}</span></div>${demo}<div class="status-id"><span>เลขคำสั่งซื้อ</span><strong>${esc(order.id)}</strong><button class="small-action" type="button" id="copy-id">คัดลอก</button></div><div class="status-items"><h3>รายละเอียดสินค้า</h3>${items.map(item => `<div class="status-item"><div class="status-cover">${cover(item)}</div><div><strong>${esc(item.title)}</strong><p>${esc(item.subtitle)}</p><b>${money(item.price)}</b></div></div>`).join('')}</div><div class="status-facts"><div><span>ยอดรวมจำลอง</span><strong>${money(order.price)}</strong></div><div><span>อีเมลรับหนังสือ</span><strong>${esc(order.email)}</strong></div></div>${paid ? `<div class="delivery-panel"><h3>การส่งมอบ</h3><p>${esc(deliveryText || 'กำลังตรวจผลการส่งอีเมล')}</p>${items.map(item => order.downloadUrls?.[item.id] || (items.length === 1 ? order.downloadUrl : '') ? `<a href="${esc(order.downloadUrls?.[item.id] || order.downloadUrl)}" target="_blank" rel="noopener">ดาวน์โหลด ${esc(item.title)} ↗</a>` : '').join('')}<small>ลิงก์ใช้ได้ 24 ชั่วโมง ควรเปิดในเบราว์เซอร์หรือแอปอีเมล</small></div>` : `<div class="payment-demo"><div><h3>ชำระเงินจำลอง</h3><p>กดปุ่มเพื่อเปลี่ยนสถานะเป็น PAID และทดสอบการส่งมอบหนังสือ</p></div><button class="pill-button dark" type="button" id="pay-button">จำลองชำระเงินสำเร็จ</button></div>`}<div id="live-message" aria-live="polite"></div></section>`, 'orders');
+  setView(`${orderTabs('track')}${pageHead(paid ? 'ชำระสินค้าเสร็จสิ้น' : cancelled ? 'ยกเลิกคำสั่งซื้อแล้ว' : 'รอชำระสินค้า')}
+    <section class="white-panel status-panel"><div class="status-panel-head"><div><div class="kicker">ORDER STATUS</div><h2>คำสั่งซื้อ ${esc(order.id)}</h2></div><span class="status-pill ${status.className}">${status.short}</span></div>${demo}<div class="status-id"><span>เลขคำสั่งซื้อ</span><strong>${esc(order.id)}</strong><button class="small-action" type="button" id="copy-id">คัดลอก</button></div><div class="status-items"><h3>รายละเอียดสินค้า</h3>${items.map(item => `<div class="status-item"><div class="status-cover">${cover(item)}</div><div><strong>${esc(item.title)}</strong><p>${esc(item.subtitle)}</p><b>${money(item.price)}</b></div></div>`).join('')}</div><div class="status-facts"><div><span>ยอดรวมจำลอง</span><strong>${money(order.price)}</strong></div><div><span>อีเมลรับหนังสือ</span><strong>${esc(order.email)}</strong></div></div>${paid ? `<div class="delivery-panel"><h3>การส่งมอบ</h3><p>${esc(deliveryText || 'กำลังตรวจผลการส่งอีเมล')}</p>${items.map(item => order.downloadUrls?.[item.id] || (items.length === 1 ? order.downloadUrl : '') ? `<a href="${esc(order.downloadUrls?.[item.id] || order.downloadUrl)}" target="_blank" rel="noopener">ดาวน์โหลด ${esc(item.title)} ↗</a>` : '').join('')}<small>ลิงก์ใช้ได้ 24 ชั่วโมง ควรเปิดในเบราว์เซอร์หรือแอปอีเมล</small></div>` : cancelled ? `<div class="cancelled-panel">คำสั่งซื้อนี้ถูกยกเลิกแล้ว ไม่มีการส่งลิงก์ดาวน์โหลด</div>` : `<div class="payment-demo"><div><h3>ชำระเงินจำลอง</h3><p>กดปุ่มเพื่อเปลี่ยนสถานะเป็น PAID และทดสอบการส่งมอบหนังสือ</p></div><div class="payment-actions"><button class="pill-button dark" type="button" id="pay-button">จำลองชำระเงินสำเร็จ</button><button class="pill-button danger-outline" type="button" id="cancel-button">ยกเลิกคำสั่งซื้อ</button></div></div>`}<div id="live-message" aria-live="polite"></div></section>`, 'orders');
   document.querySelector('#copy-id').addEventListener('click', async () => { try { await navigator.clipboard.writeText(order.id); document.querySelector('#copy-id').textContent = 'คัดลอกแล้ว'; } catch {} });
   document.querySelector('#pay-button')?.addEventListener('click', async event => { const button = event.currentTarget; button.disabled = true; button.textContent = 'กำลังอัปเดต…'; try { const data = await api('pay', { id: order.id, email: customerEmail || order.email }); currentOrder = data.order; orderPage(order.id); } catch (error) { document.querySelector('#live-message').innerHTML = notice(error.message); button.disabled = false; button.textContent = 'จำลองชำระเงินสำเร็จ'; } });
+  document.querySelector('#cancel-button')?.addEventListener('click', async event => { const button = event.currentTarget; button.disabled = true; try { const data = await api('cancel', { id: order.id, email: customerEmail || order.email }); currentOrder = data.order; orderPage(order.id); } catch (error) { document.querySelector('#live-message').innerHTML = notice(error.message); button.disabled = false; } });
 }
 
-function track(prefill = '') {
-  setView(`${orderTabs('track')}<section class="white-panel track-panel"><div class="kicker">FIND YOUR ORDER</div><h1>ติดตามคำสั่งซื้อ</h1><p>กรอกเลขคำสั่งซื้อและอีเมลเดียวกับที่ใช้สั่งซื้อ</p>${demo}<form id="track-form"><label for="track-id">เลขคำสั่งซื้อ</label><input id="track-id" name="id" required maxlength="27" value="${esc(prefill)}" placeholder="EB-..."><label for="track-email">อีเมล</label><input id="track-email" name="email" type="email" required placeholder="name@example.com"><div id="live-message" aria-live="polite"></div><button class="pill-button dark" type="submit">ดูสถานะคำสั่งซื้อ</button></form></section>`, 'orders');
-  document.querySelector('#track-form').addEventListener('submit', async event => { event.preventDefault(); const form = event.currentTarget; const button = form.querySelector('button'); button.disabled = true; try { const data = await api('order', { id: form.elements.namedItem('id').value.trim().toUpperCase(), email: form.elements.namedItem('email').value }); currentOrder = data.order; customerEmail = data.order.email; location.hash = `#order/${data.order.id}`; orderPage(data.order.id); } catch (error) { document.querySelector('#live-message').innerHTML = notice(error.message); button.disabled = false; } });
+async function track(prefill = '') {
+  setView(`${orderTabs('track')}<section class="white-panel tracking-panel"><h1>รายการการสั่งซื้อทั้งหมด</h1><p class="tracking-note">คำสั่งซื้อที่ยืนยันในเซสชันนี้ · การชำระเงินเป็นระบบจำลอง</p><div id="track-message" aria-live="polite"></div><div id="tracking-list" class="tracking-list"><div class="loading">กำลังโหลดรายการ…</div></div>
+    <details class="tracking-lookup" ${prefill ? 'open' : ''}><summary>ค้นหาคำสั่งซื้ออื่นด้วยเลขคำสั่งซื้อและอีเมล</summary><form id="track-form"><label for="track-id">เลขคำสั่งซื้อ</label><input id="track-id" name="id" required maxlength="27" value="${esc(prefill)}" placeholder="EB-..."><label for="track-email">อีเมล</label><input id="track-email" name="email" type="email" required placeholder="name@example.com"><div id="live-message" aria-live="polite"></div><button class="pill-button dark" type="submit">ดูสถานะคำสั่งซื้อ</button></form></details></section>`, 'orders');
+  document.querySelector('#track-form').addEventListener('submit', async event => { event.preventDefault(); const form = event.currentTarget; const button = form.querySelector('button'); button.disabled = true; try { const data = await api('order', { id: form.elements.namedItem('id').value.trim().toUpperCase(), email: form.elements.namedItem('email').value }); currentOrder = data.order; customerEmail = data.order.email; receipts = [{ id: data.order.id, email: data.order.email }, ...receipts.filter(item => item.id !== data.order.id)].slice(0, 20); writeSession('safe-orders', receipts); location.hash = `#order/${data.order.id}`; orderPage(data.order.id); } catch (error) { document.querySelector('#live-message').innerHTML = notice(error.message); button.disabled = false; } });
+  const list = document.querySelector('#tracking-list');
+  const orders = await sessionOrders();
+  if (!list.isConnected) return;
+  list.innerHTML = orders.length ? orders.map(order => orderRow(order)).join('') : `<div class="empty-state"><p>ยังไม่มีคำสั่งซื้อในเซสชันนี้</p><a class="pill-button dark" href="#catalog">เลือกหนังสือ</a></div>`;
+  bindOpenOrders(list, orders);
+  for (const action of ['pay', 'cancel']) {
+    list.querySelectorAll(`[data-track-${action}]`).forEach(button => button.addEventListener('click', async () => {
+      const order = orders.find(item => item.id === button.dataset[`track${action[0].toUpperCase()}${action.slice(1)}`]);
+      button.disabled = true;
+      try {
+        const data = await api(action, { id: order.id, email: order.email });
+        currentOrder = data.order;
+        customerEmail = order.email;
+        await track();
+      } catch (error) {
+        document.querySelector('#track-message').innerHTML = notice(error.message);
+        button.disabled = false;
+      }
+    }));
+  }
 }
 
 async function history() {
-  setView(`${orderTabs('history')}<section class="white-panel history-panel"><h1>ประวัติการสั่งซื้อในอุปกรณ์นี้</h1><p class="field-note">แสดงเฉพาะคำสั่งซื้อที่สร้างในเซสชันนี้ หากต้องการดูรายการอื่น ใช้เลขคำสั่งซื้อและอีเมลในหน้าติดตาม</p><div id="history-list" class="history-list"><div class="loading">กำลังโหลดรายการ…</div></div></section>`, 'orders');
+  setView(`${orderTabs('history')}<section class="white-panel tracking-panel history-panel"><h1>ประวัติการสั่งซื้อทั้งหมด</h1><p class="tracking-note">แสดงเฉพาะคำสั่งซื้อที่ยืนยันในเซสชันนี้</p><div id="history-list" class="tracking-list"><div class="loading">กำลังโหลดรายการ…</div></div></section>`, 'orders');
   const list = document.querySelector('#history-list');
-  const result = await Promise.all(receipts.map(async receipt => { try { return (await api('order', receipt)).order; } catch { return null; } }));
+  const orders = await sessionOrders();
   if (!list.isConnected) return;
-  const orders = result.filter(Boolean);
-  list.innerHTML = orders.length ? orders.map(order => `<article class="history-row"><div><strong>${esc(order.id)}</strong><p>${esc(order.items?.map(item => item.title).join(', ') || order.title)}</p></div><div><span class="status-pill ${order.status === 'PAID' ? 'paid' : 'pending'}">${esc(order.status)}</span><strong>${money(order.price)}</strong><button type="button" class="small-action" data-open-order="${esc(order.id)}">ดูรายละเอียด →</button></div></article>`).join('') : `<div class="empty-state"><p>ยังไม่มีประวัติในอุปกรณ์นี้</p><a class="pill-button dark" href="#catalog">เลือกหนังสือ</a></div>`;
-  list.querySelectorAll('[data-open-order]').forEach(button => button.addEventListener('click', () => { currentOrder = orders.find(order => order.id === button.dataset.openOrder); customerEmail = currentOrder.email; location.hash = `#order/${currentOrder.id}`; orderPage(currentOrder.id); }));
+  list.innerHTML = orders.length ? orders.map(order => orderRow(order, 'history')).join('') : `<div class="empty-state"><p>ยังไม่มีประวัติในเซสชันนี้</p><a class="pill-button dark" href="#catalog">เลือกหนังสือ</a></div>`;
+  bindOpenOrders(list, orders);
 }
 
 function profile() {

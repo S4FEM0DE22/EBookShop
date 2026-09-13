@@ -11,9 +11,13 @@ export default { async fetch(request) {
     }
     let order = await getOrder(input.id);
     if (!order || order.email !== cleanEmail(input.email)) return json({ error: 'ไม่พบคำสั่งซื้อนี้' }, 404);
+    if (order.status === 'CANCELLED') return json({ error: 'คำสั่งซื้อนี้ถูกยกเลิกแล้ว' }, 409);
     const books = await getOrderBooks(order);
     const origin = process.env.PUBLIC_SITE_URL?.replace(/\/$/, '') || new URL(request.url).origin;
-    if (order.status !== 'PAID') order = await updateOrder(order.id, { status: 'PAID', paid_at: new Date().toISOString() });
+    if (order.status === 'PENDING') {
+      order = await updateOrder(order.id, { status: 'PAID', paid_at: new Date().toISOString() }, 'PENDING') || await getOrder(order.id);
+      if (order.status === 'CANCELLED') return json({ error: 'คำสั่งซื้อนี้ถูกยกเลิกแล้ว' }, 409);
+    }
     let delivery = { emailStatus: order.email_status, downloadUrls: Object.fromEntries(books.map(book => [book.id, downloadUrl(order, origin, book.id)])) };
     if (order.email_status !== 'SENT') {
       delivery = await deliverEmail(order, books, origin);

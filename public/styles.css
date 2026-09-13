@@ -96,8 +96,8 @@ input:not([type=checkbox]):focus{outline:3px solid #ffbaba;outline-offset:2px}
 .order-tabs{background:#020202;border:1px solid #fff;border-radius:70px;padding:14px 18px;display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:45px 0 0;position:relative;z-index:1}
 .order-tabs a{border:2px solid #fff;border-radius:70px;color:#fff;text-align:center;padding:11px 15px;font-size:clamp(1rem,2.3vw,2.2rem);line-height:1.25;white-space:nowrap}
 .order-tabs a.active,.order-tabs a:hover{background:#fff;color:#000}
-.cart-panel,.history-panel{padding:30px 28px 42px;margin-top:-18px;min-height:550px}
-.cart-panel>h1,.history-panel>h1{font-size:2.15rem;line-height:1.2;margin:22px 8px 20px}
+.cart-panel{padding:30px 28px 42px;margin-top:-18px;min-height:550px}
+.cart-panel>h1{font-size:2.15rem;line-height:1.2;margin:22px 8px 20px}
 .cart-list{display:grid;gap:12px}
 .cart-row{display:grid;grid-template-columns:38px 245px 1fr 42px;gap:18px;align-items:center;background:#d5dee7;border-radius:25px;padding:12px 17px;min-height:235px}
 .cart-check{appearance:none;width:32px;height:32px;border:3px solid #111;border-radius:3px;background:transparent;cursor:pointer}
@@ -116,6 +116,7 @@ input:not([type=checkbox]):focus{outline:3px solid #ffbaba;outline-offset:2px}
 .status-pill{display:inline-flex;align-items:center;justify-content:center;padding:6px 16px;border-radius:40px;font-size:.88rem;font-weight:700;white-space:nowrap}
 .status-pill.pending{background:#ffe7b7;color:#845700}
 .status-pill.paid{background:#dcf3e2;color:#207041}
+.status-pill.cancelled{background:#ffe6e6;color:#c62323}
 
 /* Checkout and order status */
 .checkout-panel,.status-panel{padding:37px 5%;max-width:1250px;margin:0 auto 35px}
@@ -141,19 +142,39 @@ input:not([type=checkbox]):focus{outline:3px solid #ffbaba;outline-offset:2px}
 .status-facts>div{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .payment-demo,.delivery-panel{background:#f2f5f7;border-radius:25px;padding:23px 25px;margin-top:25px}
 .payment-demo{display:flex;justify-content:space-between;align-items:center;gap:25px}
+.payment-actions{display:flex;gap:10px;flex-wrap:wrap}
+.pill-button.danger-outline{background:#fff;color:#d42323;border-color:#d42323}
 .payment-demo p,.delivery-panel p{margin:0;color:#444}
+.cancelled-panel{background:#ffe9e9;color:#b41f1f;border-radius:22px;padding:21px 24px;margin-top:25px;font-weight:700}
 .delivery-panel a{display:block;color:#115a87;text-decoration:underline;margin-top:10px;word-break:break-word}
 .delivery-panel small{display:block;color:#555;margin-top:15px}
-.track-panel{max-width:850px;min-height:520px;margin:0 auto 35px;padding:45px 6%}
-.track-panel h1{font-size:2.3rem;margin:6px 0 0}
-.track-panel>p{margin:4px 0 20px;color:#444}
-.track-panel .pill-button{margin-top:22px}
-.history-panel>.field-note{margin:0 8px 20px}
-.history-list{display:grid;gap:11px}
-.history-row{background:#d5dee7;border-radius:25px;padding:22px 28px;display:flex;align-items:center;justify-content:space-between;gap:25px}
-.history-row>div:first-child strong{font-size:1.1rem}
-.history-row p{margin:2px 0 0}
-.history-row>div:last-child{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.tracking-panel{padding:30px 28px 48px;margin-top:-18px;min-height:550px}
+.tracking-panel>h1{font-size:2.15rem;line-height:1.2;margin:22px 8px 4px}
+.tracking-note{margin:0 8px 18px;color:#555}
+.tracking-list{display:grid;gap:12px}
+.tracking-list .loading{color:#222}
+.tracking-row{display:grid;grid-template-columns:245px minmax(0,1fr) 290px;align-items:center;gap:20px;min-height:238px;background:#d5dee7;border-radius:30px;padding:9px 24px 9px 10px}
+.tracking-cover{height:218px;background:#f1f7fc;border-radius:26px;display:grid;place-items:center;overflow:hidden}
+.tracking-cover .book-cover{width:150px;height:205px;box-shadow:7px 9px 13px rgba(0,0,0,.2)}
+.tracking-copy{min-width:0}
+.tracking-copy h2{font-size:1.65rem;line-height:1.18;margin:0 0 2px}
+.tracking-copy p{font-size:1rem;line-height:1.4;margin:3px 0}
+.tracking-description{max-width:620px}
+.tracking-copy strong{display:block;font-size:1.55rem;line-height:1.2;margin-top:8px}
+.tracking-copy small{display:block;color:#4d5962;margin-top:5px;word-break:break-all}
+.tracking-side{height:100%;display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;gap:10px;padding:3px 0}
+.tracking-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.tracking-button{border:0;border-radius:50px;min-width:116px;min-height:48px;padding:8px 16px;color:#fff;font-weight:700;font-size:.96rem}
+.tracking-button.pay{background:#72cf4d}
+.tracking-button.cancel{background:#ff3838}
+.tracking-button.view{background:#111}
+.tracking-status{font-size:1.25rem;font-weight:700;text-align:right;line-height:1.25}
+.tracking-status.pending,.tracking-status.cancelled{color:#ff3838}
+.tracking-status.paid{color:#69c943}
+.tracking-lookup{margin:22px 10px 0;padding:16px 23px;border:2px solid #111;border-radius:25px}
+.tracking-lookup summary{cursor:pointer;font-weight:700}
+.tracking-lookup form{max-width:650px;padding:12px 0 8px}
+.tracking-lookup .pill-button{margin-top:20px}
 
 /* Local profile */
 .profile-layout{display:grid;grid-template-columns:1.35fr .65fr;gap:35px;align-items:center;margin:30px 0 35px}
@@ -172,6 +193,7 @@ input:not([type=checkbox]):focus{outline:3px solid #ffbaba;outline-offset:2px}
   .site-header{height:auto;min-height:95px}.brand{min-width:175px;width:220px;height:62px}
   .nav-pills{min-height:72px;padding:8px}.nav-pills>a:not(.nav-exit){min-width:100px;height:54px;padding:5px 15px;font-size:1rem}.nav-exit{font-size:2rem;padding-right:8px}
   .cart-row{grid-template-columns:32px 180px 1fr 35px}.cart-cover{height:185px}.cart-copy h2{font-size:1.4rem}
+  .tracking-row{grid-template-columns:180px minmax(0,1fr) 230px}.tracking-cover{height:190px}.tracking-cover .book-cover{width:130px;height:178px}.tracking-copy h2{font-size:1.35rem}.tracking-button{min-width:95px;padding:7px 12px}
   .product-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.product-copy{padding:18px}
 }
 @media(max-width:800px){
@@ -181,7 +203,8 @@ input:not([type=checkbox]):focus{outline:3px solid #ffbaba;outline-offset:2px}
   .product-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.product-cover{min-height:250px}
   .showcase{grid-template-columns:30px 1fr 1.3fr 1fr 30px;gap:8px;min-height:370px}.showcase-side{height:270px}.showcase-feature{height:350px}.showcase-side .book-cover{transform:scale(.7)}.showcase-feature .book-cover{transform:scale(1.1)}.showcase-arrow{font-size:3.5rem}
   .detail-panel{grid-template-columns:1fr 1fr;gap:20px;padding:28px}.detail-cover{min-height:340px}.detail-cover .book-cover{transform:scale(1.1)}
-  .order-tabs{margin-top:24px;padding:8px;border-radius:35px;gap:5px}.order-tabs a{font-size:.95rem;padding:9px 4px;border-width:1px}.cart-panel,.history-panel{padding:26px 16px;margin-top:-10px}
+  .order-tabs{margin-top:24px;padding:8px;border-radius:35px;gap:5px}.order-tabs a{font-size:.95rem;padding:9px 4px;border-width:1px}.cart-panel,.tracking-panel{padding:26px 16px;margin-top:-10px}
+  .tracking-row{grid-template-columns:140px minmax(0,1fr);gap:14px;min-height:0;padding:12px}.tracking-cover{height:168px}.tracking-cover .book-cover{width:113px;height:155px}.tracking-side{grid-column:2;align-items:flex-start;gap:8px}.tracking-actions{justify-content:flex-start}.tracking-status{text-align:left;font-size:1rem}.tracking-copy h2{font-size:1.16rem}.tracking-copy p{font-size:.85rem}.tracking-copy strong{font-size:1.15rem}
   .cart-row{grid-template-columns:27px 110px 1fr 28px;min-height:160px;gap:10px;padding:10px}.cart-check{width:24px;height:24px;border-width:2px}.cart-cover{height:145px;border-radius:15px}.cart-cover .book-cover{transform:scale(.5)}.cart-copy h2{font-size:1.08rem}.cart-copy p{font-size:.84rem}.cart-copy strong{font-size:1.1rem}
   .cart-total{font-size:1.2rem;min-height:65px;padding-left:18px}.cart-total .pill-button{min-width:170px;min-height:58px;font-size:.95rem}
   .checkout-columns{gap:4%}.checkout-panel,.status-panel{padding:28px 5%}.profile-layout{grid-template-columns:1fr 190px}.avatar-graphic{width:170px;height:170px;border-width:7px}
@@ -192,13 +215,13 @@ input:not([type=checkbox]):focus{outline:3px solid #ffbaba;outline-offset:2px}
   .product-grid{grid-template-columns:1fr;padding:0 2px 25px}.product-card{border-radius:23px}.product-cover{min-height:210px}.product-cover .book-cover{transform:scale(.8)}.product-copy h3{font-size:1.1rem}.product-description{font-size:.9rem;margin:8px 0 13px}.product-bottom strong{font-size:1.2rem}
   .showcase{grid-template-columns:26px 1fr 26px;gap:3px;min-height:360px}.showcase-side{display:none}.showcase-feature{height:345px}.showcase-feature .book-cover{transform:scale(1.05)}.showcase-arrow{font-size:3rem}.showcase-actions{padding-top:12px}
   .detail-panel{display:block;padding:22px}.detail-cover{min-height:260px}.detail-cover .book-cover{transform:scale(.95)}.detail-copy{padding-top:23px}.detail-copy h2{font-size:2rem}.detail-subtitle{font-size:1.1rem}.detail-meta{gap:18px;font-size:.88rem}.detail-actions .pill-button{flex:1}
-  .order-tabs a{font-size:.78rem;white-space:normal;min-height:47px;display:grid;place-items:center}.cart-panel>h1,.history-panel>h1{font-size:1.5rem;margin:15px 4px}
+  .order-tabs a{font-size:.78rem;white-space:normal;min-height:47px;display:grid;place-items:center}.cart-panel>h1,.tracking-panel>h1{font-size:1.5rem;margin:15px 4px}
+  .tracking-panel{border-radius:30px;padding:23px 12px 30px}.tracking-note{font-size:.78rem;margin:0 4px 13px}.tracking-row{grid-template-columns:82px minmax(0,1fr);gap:10px;border-radius:20px;padding:9px}.tracking-cover{height:110px;border-radius:14px}.tracking-cover .book-cover{width:75px;height:103px;box-shadow:3px 4px 6px rgba(0,0,0,.2)}.tracking-copy h2{font-size:.94rem}.tracking-copy p{font-size:.75rem}.tracking-description{display:none}.tracking-copy strong{font-size:1rem;margin-top:4px}.tracking-copy small{font-size:.65rem}.tracking-side{grid-column:1/-1;flex-direction:row;align-items:center;padding:0;flex-wrap:wrap}.tracking-actions{flex-wrap:nowrap}.tracking-button{min-height:38px;min-width:0;padding:5px 11px;font-size:.76rem}.tracking-status{font-size:.82rem}.tracking-lookup{margin:15px 0 0;padding:12px;font-size:.84rem}
   .cart-row{grid-template-columns:25px 78px 1fr 24px;gap:7px;min-height:136px;padding:9px}.cart-cover{height:112px}.cart-cover .book-cover{width:54px;height:78px;transform:none;box-shadow:3px 4px 6px rgba(0,0,0,.2)}.cart-copy h2{font-size:.92rem}.cart-copy p{font-size:.74rem;margin:1px 0}.cart-copy p:nth-of-type(2){display:none}.cart-copy strong{font-size:.95rem}.remove-button{font-size:1.8rem;width:24px;height:28px}
   .cart-total{border-radius:25px;display:block;padding:12px 14px;font-size:1.05rem}.cart-total span{margin-bottom:11px}.cart-total .pill-button{width:100%;min-width:0;min-height:48px}
   .checkout-panel,.status-panel{border-radius:30px;padding:24px 20px}.checkout-title h2,.status-panel-head h2{font-size:1.45rem;word-break:break-word}.demo-note{display:block;padding:12px;font-size:.85rem}.demo-note strong{display:inline-block;margin-right:6px}
   .checkout-columns{display:block}.checkout-columns>div+div{margin-top:30px;border-top:1px solid #ccc;padding-top:25px}.checkout-cover,.status-cover{width:75px;height:85px;border-radius:13px}.checkout-cover .book-cover,.status-cover .book-cover{width:48px;height:68px;transform:none;box-shadow:2px 3px 5px rgba(0,0,0,.2)}
-  .status-id{display:block;font-size:.86rem}.status-id strong{display:block}.status-id button{margin-top:5px}.status-facts{display:block}.status-facts>div+div{margin-top:10px}.payment-demo{display:block}.payment-demo .pill-button{width:100%;margin-top:17px}.track-panel{border-radius:30px;padding:25px 20px}.track-panel h1{font-size:1.8rem}
-  .history-row{display:block;padding:16px}.history-row>div:last-child{margin-top:12px;gap:13px}
+  .status-id{display:block;font-size:.86rem}.status-id strong{display:block}.status-id button{margin-top:5px}.status-facts{display:block}.status-facts>div+div{margin-top:10px}.payment-demo{display:block}.payment-actions{display:block}.payment-demo .pill-button{width:100%;margin-top:17px}
   .profile-layout{display:block}.profile-card{min-height:0;padding:30px 22px}.profile-card h1{font-size:2rem}.profile-fields{display:block}.profile-visual{display:none}
   .site-footer{display:block;text-align:center;font-size:.75rem}.site-footer span{display:block}
 }

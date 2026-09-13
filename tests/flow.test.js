@@ -4,6 +4,7 @@ import booksApi from '../api/books.js';
 import ordersApi from '../api/orders.js';
 import orderApi from '../api/order.js';
 import payApi from '../api/pay.js';
+import cancelApi from '../api/cancel.js';
 import downloadApi from '../api/download.js';
 import { makeDownloadToken, signedBookUrl } from '../lib/delivery.js';
 
@@ -62,6 +63,8 @@ test('complete local demo flow and protect order lookup and download', async () 
   assert.equal(paid.status, 'PAID');
   assert.equal(paid.emailStatus, 'DEMO');
   assert.ok(paid.downloadUrl);
+  const lateCancel = await cancelApi.fetch(request('cancel', { id: order.id, email: order.email }));
+  assert.equal(lateCancel.status, 409);
 
   const download = await downloadApi.fetch(new Request(paid.downloadUrl));
   assert.equal(download.status, 200);
@@ -98,4 +101,21 @@ test('cart checkout keeps multiple books together and scopes each download', asy
   const unrelated = makeDownloadToken({ id: created.id, book_id: 'vibe-coding' });
   const forbidden = await downloadApi.fetch(request(`download?token=${unrelated}`));
   assert.equal(forbidden.status, 403);
+});
+
+test('pending orders can be cancelled but cannot be paid or downloaded afterward', async () => {
+  const created = await ordersApi.fetch(request('orders', { bookId: 'tarot-app', name: 'ยกเลิก ทดสอบ', email: 'cancel@example.com' }));
+  const order = (await created.json()).order;
+  const wrongEmail = await cancelApi.fetch(request('cancel', { id: order.id, email: 'other@example.com' }));
+  assert.equal(wrongEmail.status, 404);
+
+  const cancelled = await cancelApi.fetch(request('cancel', { id: order.id, email: order.email }));
+  assert.equal((await cancelled.json()).order.status, 'CANCELLED');
+  const lookup = await orderApi.fetch(request('order', { id: order.id, email: order.email }));
+  assert.equal((await lookup.json()).order.status, 'CANCELLED');
+  const paid = await payApi.fetch(request('pay', { id: order.id, email: order.email }));
+  assert.equal(paid.status, 409);
+  const token = makeDownloadToken({ id: order.id, book_id: 'tarot-app' });
+  const download = await downloadApi.fetch(request(`download?token=${token}`));
+  assert.equal(download.status, 403);
 });
