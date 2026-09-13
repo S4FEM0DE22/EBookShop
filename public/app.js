@@ -17,7 +17,7 @@ function writeSession(key, value) { try { sessionStorage.setItem(key, JSON.strin
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 const money = amount => new Intl.NumberFormat('th-TH').format(amount) + ' บาท';
 const book = id => books.find(item => item.id === id);
-const cover = item => `<div class="book-cover ${esc(item.cover)}" role="img" aria-label="ปกหนังสือ ${esc(item.title)}"><span class="cover-kicker">SAFE MODE SHOP / E-BOOK</span><strong class="cover-title">${esc(item.title)}</strong><span class="cover-line"></span></div>`;
+const cover = item => `<img class="book-cover" src="${esc(item.cover)}" alt="ปกหนังสือ ${esc(item.title)}" loading="lazy">`;
 const notice = (text, kind = 'error') => `<div class="notice notice-${kind}" role="alert">${esc(text)}</div>`;
 const demo = '<div class="demo-note"><strong>DEMO ONLY</strong><span>การชำระเงินเป็นเพียงการจำลอง ไม่มีการรับเงินจริง ไม่มีการเก็บข้อมูลบัตรหรือ OTP</span></div>';
 
@@ -57,7 +57,7 @@ function home() {
 }
 
 function catalog() {
-  setView(`<section class="catalog-hero"><div class="kicker">E-BOOK</div><h1>หนังสืออิเล็กทรอนิกส์<br><span>อ่านเรื่องใหม่เริ่มได้ที่นี่</span></h1><p>เลือก E-book ที่สนใจ แล้วลองสั่งซื้อผ่านระบบได้ทันที</p></section><div class="section-title"><h2>หนังสือทั้งหมด</h2><span>${books.length} เล่ม · PDF ตัวอย่าง</span></div><div class="product-grid">${books.map(productCard).join('')}</div>`, 'catalog');
+  setView(`<section class="catalog-hero"><div class="kicker">E-BOOK</div><h1>หนังสืออิเล็กทรอนิกส์<br><span>อ่านเรื่องใหม่เริ่มได้ที่นี่</span></h1><p>เลือกเอกสาร PDF ที่สนใจ แล้วลองสั่งซื้อผ่านระบบได้ทันที</p></section><div class="section-title"><h2>หนังสือทั้งหมด</h2><span>${books.length} เล่ม · เอกสาร PDF</span></div><div class="product-grid">${books.map(productCard).join('')}</div>`, 'catalog');
 }
 
 function detail(id) {

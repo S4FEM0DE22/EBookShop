@@ -11,7 +11,7 @@ const routes = new Map([
   ['/api/pay', () => import('./api/pay.js')],
   ['/api/download', () => import('./api/download.js')]
 ]);
-const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml' };
+const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg', '.png': 'image/png' };
 
 createServer(async (req, res) => {
   try {

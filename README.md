@@ -1,6 +1,17 @@
 # SAFE MODE SHOP — E-book Shop Demo
 
-เว็บร้าน E-book สาธิตตามใบงาน Vibe Coding 2026 ปรับหน้าตาตามภาพต้นแบบ SAFE MODE SHOP: โทนขาวดำ, เมนูทรงแคปซูล, หน้าแรกแบบสไลด์, แค็ตตาล็อก, ตะกร้า, ติดตามคำสั่งซื้อ และโปรไฟล์ในเบราว์เซอร์ มีหนังสือตัวอย่าง 3 เล่ม เลือกซื้อพร้อมกันได้สูงสุด 3 เล่ม แล้ว Checkout เป็นคำสั่งซื้อ `PENDING` ปุ่ม Mock Payment เปลี่ยนเป็น `PAID` และแสดงลิงก์ดาวน์โหลดของแต่ละเล่ม ไม่มีการรับเงินจริง
+เว็บร้าน E-book สาธิตตามใบงาน Vibe Coding 2026 ปรับหน้าตาตามภาพต้นแบบ SAFE MODE SHOP: โทนขาวดำ, เมนูทรงแคปซูล, หน้าแรกแบบสไลด์, แค็ตตาล็อก, ตะกร้า, ติดตามคำสั่งซื้อ และโปรไฟล์ในเบราว์เซอร์ แค็ตตาล็อกใช้ PDF ที่ผู้ใช้ให้มา 4 ไฟล์แทนหนังสือตัวอย่างเดิม เลือกซื้อพร้อมกันได้สูงสุด 4 เล่ม แล้ว Checkout เป็นคำสั่งซื้อ `PENDING` ปุ่ม Mock Payment เปลี่ยนเป็น `PAID` และแสดงลิงก์ดาวน์โหลดของแต่ละเล่ม ไม่มีการรับเงินจริง
+
+## หนังสือที่แสดงในร้าน
+
+| ไฟล์ใน private-books | รายการ | หน้า | ราคาชั่วคราว |
+| --- | --- | ---: | ---: |
+| `media-player-pro.pdf` | รายงานการพัฒนา Media Player PRO | 10 | 129 บาท |
+| `tarot-app.pdf` | รายงานการพัฒนา Tarot App | 14 | 149 บาท |
+| `sqlite-task-manager-guide.pdf` | คู่มือใช้งาน SQLite Task Manager PRO | 5 | 99 บาท |
+| `sqlite-task-manager-report.pdf` | รายงานการพัฒนา SQLite Task Manager PRO | 8 | 149 บาท |
+
+ราคายังรอเจ้าของร้านยืนยัน แก้ให้ตรงกันทั้ง [catalog.js](lib/catalog.js) และ [schema.sql](supabase/schema.sql) ก่อนเผยแพร่ ภาพปกอยู่ใน `public/assets/covers/` ซึ่งแสดงได้โดยไม่เปิด PDF เต็มเล่ม ส่วน PDF จริงอยู่ใน `private-books/` และถูกละเว้นจาก Git
 
 ## ทดสอบในเครื่อง
 
@@ -19,7 +30,7 @@ npm test
 ## ตั้งค่า Supabase และอีเมล
 
 1. สร้าง Supabase project แล้วรัน [schema.sql](supabase/schema.sql) ใน SQL Editor จะได้ตาราง `books`, `orders` ที่เปิด RLS และ private Storage bucket ชื่อ `ebooks`
-2. อัปโหลด PDF ทั้ง 3 ไฟล์จาก `private-books/` ไปยัง bucket `ebooks` โดยคงชื่อไฟล์เดิม และตรวจว่า bucket **ไม่เป็น public**
+2. อัปโหลดเฉพาะ PDF ทั้ง 4 ไฟล์ในตารางข้างบนจาก `private-books/` ไปยัง bucket `ebooks` โดยคงชื่อไฟล์เดิม และตรวจว่า bucket **ไม่เป็น public**
 3. สร้าง Resend API key และยืนยันโดเมนผู้ส่ง แล้วใช้ที่อยู่นั้นใน `EMAIL_FROM` ถ้าใช้โดเมนทดสอบของ Resend อาจส่งได้เฉพาะอีเมลบัญชีผู้สร้าง
 4. ตั้งค่า Environment Variables ใน Vercel ตาม [.env.example](.env.example): `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `RESEND_API_KEY`, `EMAIL_FROM`, `DOWNLOAD_SECRET`, `PUBLIC_SITE_URL` ห้ามนำ secret ใส่หน้าเว็บหรือ GitHub
 5. เชื่อม repository กับ Vercel แล้ว deploy โดยใช้ root directory ของโปรเจกต์นี้ ไม่ต้องมี build command จากนั้นเปิด Production URL เพื่อทดสอบครบ flow

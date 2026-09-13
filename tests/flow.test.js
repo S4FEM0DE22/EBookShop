@@ -20,15 +20,15 @@ test('private storage signed URL uses the storage endpoint and server-only key',
   process.env.SUPABASE_URL = 'https://sample.supabase.co';
   process.env.SUPABASE_SECRET_KEY = 'sb_secret_test_only';
   globalThis.fetch = async (url, options) => {
-    assert.equal(url, 'https://sample.supabase.co/storage/v1/object/sign/ebooks/vibe-coding.pdf');
+    assert.equal(url, 'https://sample.supabase.co/storage/v1/object/sign/ebooks/media-player-pro.pdf');
     assert.equal(options.headers.apikey, 'sb_secret_test_only');
     assert.equal(options.headers.Authorization, undefined);
     assert.deepEqual(JSON.parse(options.body), { expiresIn: 300 });
-    return Response.json({ signedURL: '/object/sign/ebooks/vibe-coding.pdf?token=sample' });
+    return Response.json({ signedURL: '/object/sign/ebooks/media-player-pro.pdf?token=sample' });
   };
   try {
-    const url = await signedBookUrl({ file: 'vibe-coding.pdf' });
-    assert.equal(url, 'https://sample.supabase.co/storage/v1/object/sign/ebooks/vibe-coding.pdf?token=sample&download=vibe-coding.pdf');
+    const url = await signedBookUrl({ file: 'media-player-pro.pdf' });
+    assert.equal(url, 'https://sample.supabase.co/storage/v1/object/sign/ebooks/media-player-pro.pdf?token=sample&download=media-player-pro.pdf');
   } finally {
     globalThis.fetch = oldFetch;
     if (oldUrl === undefined) delete process.env.SUPABASE_URL; else process.env.SUPABASE_URL = oldUrl;
@@ -38,10 +38,12 @@ test('private storage signed URL uses the storage endpoint and server-only key',
 
 test('complete local demo flow and protect order lookup and download', async () => {
   const catalog = await (await booksApi.fetch(request('books'))).json();
-  assert.equal(catalog.books.length, 3);
+  assert.equal(catalog.books.length, 4);
   assert.ok(catalog.books.every(item => item.title && item.description && item.price));
+  assert.deepEqual(catalog.books.map(item => item.id), ['media-player-pro', 'tarot-app', 'sqlite-task-manager-guide', 'sqlite-task-manager-report']);
+  assert.ok(catalog.books.every(item => item.cover.startsWith('/assets/covers/') && !('file' in item)));
 
-  const created = await ordersApi.fetch(request('orders', { bookId: 'vibe-coding', name: 'ทดสอบ ระบบ', email: 'Test@Example.com' }));
+  const created = await ordersApi.fetch(request('orders', { bookId: 'media-player-pro', name: 'ทดสอบ ระบบ', email: 'Test@Example.com' }));
   assert.equal(created.status, 201);
   const order = (await created.json()).order;
   assert.match(order.id, /^EB-[A-F0-9]{24}$/);
@@ -75,25 +77,25 @@ test('complete local demo flow and protect order lookup and download', async () 
 
 test('cart checkout keeps multiple books together and scopes each download', async () => {
   const response = await ordersApi.fetch(request('orders', {
-    bookIds: ['vibe-coding', 'web-design'],
+    bookIds: ['media-player-pro', 'tarot-app', 'sqlite-task-manager-guide', 'sqlite-task-manager-report'],
     name: 'ผู้ทดสอบ',
     email: 'cart@example.com'
   }));
   assert.equal(response.status, 201);
   const created = (await response.json()).order;
   assert.equal(created.status, 'PENDING');
-  assert.equal(created.items.length, 2);
-  assert.equal(created.price, 278);
+  assert.equal(created.items.length, 4);
+  assert.equal(created.price, created.items.reduce((sum, item) => sum + item.price, 0));
 
   const paid = (await (await payApi.fetch(request('pay', { id: created.id, email: created.email }))).json()).order;
   assert.equal(paid.status, 'PAID');
-  assert.equal(Object.keys(paid.downloadUrls).length, 2);
+  assert.equal(Object.keys(paid.downloadUrls).length, 4);
   for (const item of paid.items) {
     const file = await downloadApi.fetch(new Request(paid.downloadUrls[item.id]));
     assert.equal(file.status, 200);
-    assert.match(file.headers.get('content-disposition'), new RegExp(item.id === 'vibe-coding' ? 'vibe-coding.pdf' : 'web-design.pdf'));
+    assert.match(file.headers.get('content-disposition'), new RegExp(`${item.id}\\.pdf`));
   }
-  const unrelated = makeDownloadToken({ id: created.id, book_id: 'launch-guide' });
+  const unrelated = makeDownloadToken({ id: created.id, book_id: 'vibe-coding' });
   const forbidden = await downloadApi.fetch(request(`download?token=${unrelated}`));
   assert.equal(forbidden.status, 403);
 });

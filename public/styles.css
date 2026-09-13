@@ -60,21 +60,14 @@ input:not([type=checkbox]):focus{outline:3px solid #ffbaba;outline-offset:2px}
 .showcase-actions{display:flex;justify-content:center;align-items:center;gap:22px;color:#fff;padding:15px 0 35px}
 
 /* Book covers */
-.book-cover{width:165px;height:226px;color:#fff;padding:21px 17px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:10px 12px 17px rgba(0,0,0,.2),inset 5px 0 6px rgba(0,0,0,.13);position:relative}
-.book-cover:after{content:"";position:absolute;left:8px;top:0;bottom:0;border-left:1px solid rgba(255,255,255,.25)}
-.cover-vibe{background:linear-gradient(145deg,#d76c5e,#a44151)}
-.cover-design{background:linear-gradient(145deg,#246b78,#16445b)}
-.cover-launch{background:linear-gradient(145deg,#8162ab,#494586)}
-.cover-kicker{font-size:.55rem;line-height:1.3;letter-spacing:.13em;opacity:.9}
-.cover-title{font-size:1.02rem;line-height:1.25}
-.cover-line{width:42px;height:2px;background:#f3d570}
+.book-cover{display:block;width:165px;height:226px;object-fit:cover;box-shadow:10px 12px 17px rgba(0,0,0,.2)}
 
 /* Catalog */
 .catalog-hero{background:#fff;border-radius:100px;padding:48px 5.5% 42px;min-height:360px;display:flex;flex-direction:column;align-items:flex-start}
 .catalog-hero h1{font-size:clamp(2.6rem,5.2vw,5.5rem);line-height:1.23;margin:10px 0 30px;font-weight:700;letter-spacing:-.045em}
 .catalog-hero h1 span{font-size:.73em}
 .catalog-hero p{font-weight:700;font-size:1.15rem;margin:auto 0 0}
-.product-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;padding:0 12px 35px}
+.product-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:24px;padding:0 12px 35px}
 .product-card{background:#fff;border-radius:28px;overflow:hidden;display:flex;flex-direction:column}
 .product-cover{background:#e9f0f6;min-height:305px;display:grid;place-items:center}
 .product-copy{padding:21px 24px 25px;display:flex;flex-direction:column;flex:1}
@@ -179,7 +172,7 @@ input:not([type=checkbox]):focus{outline:3px solid #ffbaba;outline-offset:2px}
   .site-header{height:auto;min-height:95px}.brand{min-width:175px;width:220px;height:62px}
   .nav-pills{min-height:72px;padding:8px}.nav-pills>a:not(.nav-exit){min-width:100px;height:54px;padding:5px 15px;font-size:1rem}.nav-exit{font-size:2rem;padding-right:8px}
   .cart-row{grid-template-columns:32px 180px 1fr 35px}.cart-cover{height:185px}.cart-copy h2{font-size:1.4rem}
-  .product-grid{gap:16px}.product-copy{padding:18px}
+  .product-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.product-copy{padding:18px}
 }
 @media(max-width:800px){
   .app-shell{padding:10px 12px 0}.site-header{border-radius:32px;flex-wrap:wrap;padding:12px;gap:8px}.brand{margin:auto;height:52px;width:190px;min-width:190px}
@@ -200,10 +193,10 @@ input:not([type=checkbox]):focus{outline:3px solid #ffbaba;outline-offset:2px}
   .showcase{grid-template-columns:26px 1fr 26px;gap:3px;min-height:360px}.showcase-side{display:none}.showcase-feature{height:345px}.showcase-feature .book-cover{transform:scale(1.05)}.showcase-arrow{font-size:3rem}.showcase-actions{padding-top:12px}
   .detail-panel{display:block;padding:22px}.detail-cover{min-height:260px}.detail-cover .book-cover{transform:scale(.95)}.detail-copy{padding-top:23px}.detail-copy h2{font-size:2rem}.detail-subtitle{font-size:1.1rem}.detail-meta{gap:18px;font-size:.88rem}.detail-actions .pill-button{flex:1}
   .order-tabs a{font-size:.78rem;white-space:normal;min-height:47px;display:grid;place-items:center}.cart-panel>h1,.history-panel>h1{font-size:1.5rem;margin:15px 4px}
-  .cart-row{grid-template-columns:25px 78px 1fr 24px;gap:7px;min-height:136px;padding:9px}.cart-cover{height:112px}.cart-cover .book-cover{width:54px;height:78px;padding:8px 6px;transform:none;box-shadow:3px 4px 6px rgba(0,0,0,.2)}.cart-cover .cover-kicker{font-size:.19rem}.cart-cover .cover-title{font-size:.38rem}.cart-cover .cover-line{width:20px;height:1px}.cart-copy h2{font-size:.92rem}.cart-copy p{font-size:.74rem;margin:1px 0}.cart-copy p:nth-of-type(2){display:none}.cart-copy strong{font-size:.95rem}.remove-button{font-size:1.8rem;width:24px;height:28px}
+  .cart-row{grid-template-columns:25px 78px 1fr 24px;gap:7px;min-height:136px;padding:9px}.cart-cover{height:112px}.cart-cover .book-cover{width:54px;height:78px;transform:none;box-shadow:3px 4px 6px rgba(0,0,0,.2)}.cart-copy h2{font-size:.92rem}.cart-copy p{font-size:.74rem;margin:1px 0}.cart-copy p:nth-of-type(2){display:none}.cart-copy strong{font-size:.95rem}.remove-button{font-size:1.8rem;width:24px;height:28px}
   .cart-total{border-radius:25px;display:block;padding:12px 14px;font-size:1.05rem}.cart-total span{margin-bottom:11px}.cart-total .pill-button{width:100%;min-width:0;min-height:48px}
   .checkout-panel,.status-panel{border-radius:30px;padding:24px 20px}.checkout-title h2,.status-panel-head h2{font-size:1.45rem;word-break:break-word}.demo-note{display:block;padding:12px;font-size:.85rem}.demo-note strong{display:inline-block;margin-right:6px}
-  .checkout-columns{display:block}.checkout-columns>div+div{margin-top:30px;border-top:1px solid #ccc;padding-top:25px}.checkout-cover,.status-cover{width:75px;height:85px;border-radius:13px}.checkout-cover .book-cover,.status-cover .book-cover{width:48px;height:68px;padding:7px 5px;transform:none;box-shadow:2px 3px 5px rgba(0,0,0,.2)}.checkout-cover .cover-kicker,.status-cover .cover-kicker{font-size:.17rem}.checkout-cover .cover-title,.status-cover .cover-title{font-size:.34rem}.checkout-cover .cover-line,.status-cover .cover-line{width:18px;height:1px}
+  .checkout-columns{display:block}.checkout-columns>div+div{margin-top:30px;border-top:1px solid #ccc;padding-top:25px}.checkout-cover,.status-cover{width:75px;height:85px;border-radius:13px}.checkout-cover .book-cover,.status-cover .book-cover{width:48px;height:68px;transform:none;box-shadow:2px 3px 5px rgba(0,0,0,.2)}
   .status-id{display:block;font-size:.86rem}.status-id strong{display:block}.status-id button{margin-top:5px}.status-facts{display:block}.status-facts>div+div{margin-top:10px}.payment-demo{display:block}.payment-demo .pill-button{width:100%;margin-top:17px}.track-panel{border-radius:30px;padding:25px 20px}.track-panel h1{font-size:1.8rem}
   .history-row{display:block;padding:16px}.history-row>div:last-child{margin-top:12px;gap:13px}
   .profile-layout{display:block}.profile-card{min-height:0;padding:30px 22px}.profile-card h1{font-size:2rem}.profile-fields{display:block}.profile-visual{display:none}
