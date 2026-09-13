@@ -147,6 +147,7 @@ input:not([type=checkbox]):focus{outline:3px solid #ffbaba;outline-offset:2px}
 .payment-demo p,.delivery-panel p{margin:0;color:#444}
 .cancelled-panel{background:#ffe9e9;color:#b41f1f;border-radius:22px;padding:21px 24px;margin-top:25px;font-weight:700}
 .delivery-panel a{display:block;color:#115a87;text-decoration:underline;margin-top:10px;word-break:break-word}
+.delivery-panel button{margin-top:18px}
 .delivery-panel small{display:block;color:#555;margin-top:15px}
 .tracking-panel{padding:30px 28px 48px;margin-top:-18px;min-height:550px}
 .tracking-panel>h1{font-size:2.15rem;line-height:1.2;margin:22px 8px 4px}
