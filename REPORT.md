@@ -14,6 +14,15 @@
 | ลิงก์ดาวน์โหลดหลัง PAID | ผ่านในเครื่อง; ไฟล์ PDF เปิดได้ และ token ผิดได้ 403 |
 | ทดสอบอีเมล | โหมดในเครื่องแสดงผล `DEMO`; ยังไม่ใช่การส่งอีเมลจริง |
 
+ภาพหลักฐานที่บันทึกจากการทดสอบ **ในเครื่อง**:
+
+- [หน้าร้านบนคอมพิวเตอร์](output/screenshots/desktop-store.png)
+- [หน้าร้านบนมือถือ](output/screenshots/mobile-store.png)
+- [Checkout บนมือถือ](output/screenshots/mobile-checkout.png)
+- [สถานะ PENDING บนมือถือ](output/screenshots/mobile-pending.png)
+- [สถานะ PAID และลิงก์ดาวน์โหลดบนมือถือ](output/screenshots/mobile-paid.png)
+- [สถานะ PAID บนคอมพิวเตอร์](output/screenshots/desktop-paid.png)
+
 ## ยังต้องตรวจบนบริการจริง
 
 | รายการ | สถานะ / หลักฐานที่ต้องแนบ |
