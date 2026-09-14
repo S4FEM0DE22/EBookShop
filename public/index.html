@@ -17,8 +17,13 @@
         <a href="#home" data-nav="home">หน้าแรก</a>
         <a href="#catalog" data-nav="catalog">สินค้า</a>
         <a href="#cart" data-nav="orders">คำสั่งซื้อ <span id="cart-count" class="cart-count" hidden></span></a>
-        <a href="#profile" data-nav="profile">โปรไฟล์</a>
-        <a class="nav-exit" href="#home" aria-label="กลับหน้าแรก" title="กลับหน้าแรก">↪</a>
+        <a href="#profile" data-nav="profile" hidden>โปรไฟล์</a>
+        <a href="#login" data-nav="login">เข้าสู่ระบบ</a>
+        <a href="#register" data-nav="register">สมัครสมาชิก</a>
+        <button class="nav-auth-action" id="nav-auth-action" type="button" aria-label="เข้าสู่ระบบ" title="เข้าสู่ระบบ">
+          <svg class="login-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6"/></svg>
+          <svg class="logout-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 17l5-5-5-5"/><path d="M19 12H7"/><path d="M12 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h6"/></svg>
+        </button>
       </nav>
     </header>
     <main id="app" tabindex="-1"><div class="loading">กำลังโหลดร้านหนังสือ…</div></main>
