@@ -7,7 +7,7 @@ export default { async fetch(request) {
   try {
     method(request, 'POST');
     sameOrigin(request);
-    const user = customer(request);
+    const user = await customer(request);
     const admin = isAdmin(request);
     if (!user && !admin) return json({ error: 'กรุณาเข้าสู่ระบบ' }, 401);
     const input = await body(request);
@@ -15,7 +15,7 @@ export default { async fetch(request) {
       return json({ error: 'ไม่พบคำสั่งซื้อนี้' }, 404);
     }
     let order = await getOrder(input.id);
-    if (!order || (!admin && order.email !== user.email)) return json({ error: 'ไม่พบคำสั่งซื้อนี้' }, 404);
+    if (!order || (!admin && order.customer_id !== user.id)) return json({ error: 'ไม่พบคำสั่งซื้อนี้' }, 404);
     if (order.status === 'PAID') return json({ error: 'คำสั่งซื้อที่ชำระแล้วไม่สามารถยกเลิกในระบบสาธิต' }, 409);
     if (order.status === 'PENDING') {
       order = await updateOrder(order.id, { status: 'CANCELLED', cancelled_at: new Date().toISOString() }, 'PENDING') || await getOrder(order.id);

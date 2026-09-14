@@ -8,7 +8,7 @@ export default { async fetch(request) {
   try {
     method(request, 'POST');
     sameOrigin(request);
-    const user = customer(request);
+    const user = await customer(request);
     const admin = isAdmin(request);
     if (!user && !admin) return json({ error: 'กรุณาเข้าสู่ระบบ' }, 401);
     const input = await body(request);
@@ -16,7 +16,7 @@ export default { async fetch(request) {
       return json({ error: 'ไม่พบคำสั่งซื้อนี้' }, 404);
     }
     let order = await getOrder(input.id);
-    if (!order || (!admin && order.email !== user.email)) return json({ error: 'ไม่พบคำสั่งซื้อนี้' }, 404);
+    if (!order || (!admin && order.customer_id !== user.id)) return json({ error: 'ไม่พบคำสั่งซื้อนี้' }, 404);
     if (order.status === 'CANCELLED') return json({ error: 'คำสั่งซื้อนี้ถูกยกเลิกแล้ว' }, 409);
     const books = await getOrderBooks(order);
     const origin = process.env.PUBLIC_SITE_URL?.replace(/\/$/, '') || new URL(request.url).origin;

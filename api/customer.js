@@ -1,4 +1,4 @@
-import { clearSessionCookie, customer, login, register, sameOrigin, sessionCookie } from '../lib/customer-auth.js';
+import { claimUsername, clearSessionCookie, customer, forgotPassword, login, register, resetPassword, sameOrigin, sessionCookie } from '../lib/customer-auth.js';
 import { body, cleanEmail, fail, json, orderView, validateEmail } from '../lib/http.js';
 import { listCustomerOrders, getOrderBooks } from '../lib/store.js';
 
@@ -7,17 +7,18 @@ function reply(data, status = 200, cookie) {
   if (cookie) headers['Set-Cookie'] = cookie;
   return Response.json(data, { status, headers });
 }
-function publicUser(user) { return { name: user.name, email: user.email }; }
+function publicUser(user) { return { name: user.name, email: user.email, username: user.username || null }; }
+const validUsername = value => typeof value === 'string' && /^[a-z0-9_]{3,24}$/.test(value);
 
 export default { async fetch(request) {
   try {
     const url = new URL(request.url);
     if (request.method === 'GET') {
-      const user = customer(request);
+      const user = await customer(request);
       if (url.searchParams.get('view') === 'session') return json({ user: user ? publicUser(user) : null });
       if (url.searchParams.get('view') === 'orders') {
         if (!user) return json({ error: 'กรุณาเข้าสู่ระบบ' }, 401);
-        const rows = await listCustomerOrders(user.email);
+        const rows = await listCustomerOrders(user.id);
         return json({ orders: await Promise.all(rows.map(async order => orderView(order, await getOrderBooks(order)))) });
       }
       return json({ error: 'ไม่พบข้อมูล' }, 404);
@@ -26,17 +27,41 @@ export default { async fetch(request) {
     sameOrigin(request);
     const input = await body(request);
     if (input.action === 'logout') return reply({ user: null }, 200, clearSessionCookie(request));
+    if (input.action === 'claim-username') {
+      const user = await customer(request);
+      if (!user) return json({ error: 'กรุณาเข้าสู่ระบบ' }, 401);
+      if (user.username) return json({ error: 'บัญชีนี้มี Username แล้ว' }, 409);
+      const username = typeof input.username === 'string' ? input.username.trim().toLowerCase() : '';
+      if (!validUsername(username)) return json({ error: 'Username ต้องมี 3–24 ตัว ใช้ a-z, 0-9 หรือ _' }, 400);
+      if (!await claimUsername(user, username)) return json({ error: 'Username นี้มีคนใช้แล้ว' }, 409);
+      return reply({ user: publicUser({ ...user, username }) }, 200, sessionCookie(request, { ...user, username }));
+    }
+    if (input.action === 'reset-password') {
+      const token = typeof input.token === 'string' ? input.token : '';
+      const password = typeof input.password === 'string' ? input.password : '';
+      if (token.length < 20 || token.length > 3000 || password.length < 8 || password.length > 128) return json({ error: 'ลิงก์หรือรหัสผ่านไม่ถูกต้อง' }, 400);
+      await resetPassword(token, password);
+      return reply({ changed: true }, 200, clearSessionCookie(request));
+    }
     const email = validateEmail(input.email) ? cleanEmail(input.email) : '';
+    if (input.action === 'forgot-password') {
+      if (!email) return json({ error: 'กรุณากรอกอีเมลที่ใช้สมัคร' }, 400);
+      const origin = process.env.PUBLIC_SITE_URL?.replace(/\/$/, '') || new URL(request.url).origin;
+      const demoResetUrl = await forgotPassword(email, `${origin}/`);
+      return json({ sent: true, ...(demoResetUrl ? { demoResetUrl } : {}) });
+    }
     const password = typeof input.password === 'string' ? input.password : '';
-    if (!email || password.length < 8 || password.length > 128) return json({ error: 'กรุณาตรวจอีเมลและรหัสผ่านอย่างน้อย 8 ตัวอักษร' }, 400);
+    if (password.length < 8 || password.length > 128) return json({ error: 'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร' }, 400);
     if (input.action === 'login') {
-      const user = await login(email, password);
+      const identifier = typeof input.identifier === 'string' ? input.identifier.trim().toLowerCase() : email;
+      if (!validUsername(identifier) && !validateEmail(identifier)) return json({ error: 'กรุณากรอก Username หรืออีเมล' }, 400);
+      const user = await login(identifier, password);
       return reply({ user: publicUser(user) }, 200, sessionCookie(request, user));
     }
     if (input.action === 'register') {
-      const name = typeof input.name === 'string' ? input.name.trim() : '';
-      if (name.length < 2 || name.length > 80) return json({ error: 'กรุณากรอกชื่อ 2–80 ตัวอักษร' }, 400);
-      const result = await register(name, email, password);
+      const username = typeof input.username === 'string' ? input.username.trim().toLowerCase() : '';
+      if (!validUsername(username) || !email) return json({ error: 'กรุณาตรวจ Username และอีเมล (Username ใช้ a-z, 0-9 หรือ _ จำนวน 3–24 ตัว)' }, 400);
+      const result = await register(username, email, password);
       if (result.confirmationRequired) return reply({ user: null, confirmationRequired: true }, 201);
       return reply({ user: publicUser(result.user), confirmationRequired: false }, 201, sessionCookie(request, result.user));
     }

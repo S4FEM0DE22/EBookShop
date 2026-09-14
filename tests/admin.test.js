@@ -39,7 +39,14 @@ test('admin data and changes require a valid server-signed session', async () =>
     assert.equal(data.books.length, 4);
     assert.ok(data.books.every(book => !('file' in book)));
     assert.ok(Array.isArray(data.orders));
+    assert.ok(Array.isArray(data.customers));
+    assert.ok(data.customers.every(customer => !('hash' in customer) && !('session_version' in customer)));
     assert.equal((await adminApi.fetch(request('?view=overview', undefined, `${cookie}tampered`))).status, 401);
+    const editable = data.books.find(book => book.id === 'media-player-pro');
+    const updated = await adminApi.fetch(request('', { action: 'update-book', id: editable.id, title: editable.title, subtitle: editable.subtitle, description: editable.description, author: editable.author, price: editable.price }, cookie));
+    assert.equal(updated.status, 200);
+    assert.equal((await updated.json()).book.id, editable.id);
+    assert.equal((await adminApi.fetch(request('', { action: 'update-book', id: editable.id, title: '', subtitle: '', description: '', author: '', price: 0 }, cookie))).status, 400);
 
     const id = `EB-${randomBytes(12).toString('hex').toUpperCase()}`;
     await createOrder({ id, book_id: 'tarot-app', book_ids: ['tarot-app'], customer_name: 'ลูกค้า ทดสอบ', email: 'admin-flow@example.test', status: 'PENDING', email_status: 'NOT_SENT', created_at: new Date().toISOString() });

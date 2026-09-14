@@ -7,7 +7,7 @@ export default { async fetch(request) {
   try {
     method(request, 'POST');
     sameOrigin(request);
-    const user = requireCustomer(request);
+    const user = await requireCustomer(request);
     const input = await body(request);
     const ids = Array.isArray(input.bookIds) ? input.bookIds : [input.bookId];
     if (ids.length < 1 || ids.length > 4 || ids.some(id => typeof id !== 'string') || new Set(ids).size !== ids.length) {
@@ -22,6 +22,7 @@ export default { async fetch(request) {
       id: `EB-${randomBytes(12).toString('hex').toUpperCase()}`,
       book_id: books[0].id,
       book_ids: books.map(book => book.id),
+      customer_id: user.id,
       customer_name: name,
       email: user.email,
       status: 'PENDING',

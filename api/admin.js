@@ -1,7 +1,8 @@
 import { adminConfigured, clearSessionCookie, correctPassword, isAdmin, sessionCookie } from '../lib/admin-auth.js';
+import { listCustomerProfiles } from '../lib/customer-auth.js';
 import { body, fail, json, orderView } from '../lib/http.js';
 import { books as currentBooks } from '../lib/catalog.js';
-import { getOrder, listAllBooks, listOrders, setBookActive } from '../lib/store.js';
+import { getOrder, listAllBooks, listOrders, setBookActive, updateBookDetails } from '../lib/store.js';
 import payApi from './pay.js';
 import cancelApi from './cancel.js';
 
@@ -43,12 +44,13 @@ export default { async fetch(request) {
       if (url.searchParams.get('view') === 'session') return json({ authenticated: isAdmin(request), configured: adminConfigured() });
       requireAdmin(request);
       if (url.searchParams.get('view') !== 'overview') throw Object.assign(new Error('ไม่พบข้อมูล'), { status: 404 });
-      const [books, orders] = await Promise.all([listAllBooks(), listOrders()]);
+      const [books, orders, customers] = await Promise.all([listAllBooks(), listOrders(), listCustomerProfiles()]);
       const bookMap = new Map(books.map(book => [book.id, book]));
       const currentIds = new Set(currentBooks.map(book => book.id));
       return json({
         books: books.filter(book => currentIds.has(book.id)).map(({ file, ...book }) => book),
         orders: orders.map(order => orderView(order, (Array.isArray(order.book_ids) && order.book_ids.length ? order.book_ids : [order.book_id]).map(id => bookMap.get(id)).filter(Boolean))),
+        customers: customers.map(item => ({ username: item.username, email: item.email, createdAt: item.created_at })),
         emailConfigured: Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM && !process.env.RESEND_API_KEY.includes('REPLACE'))
       });
     }
@@ -68,6 +70,14 @@ export default { async fetch(request) {
       const book = await setBookActive(input.id, input.active);
       if (!book) throw Object.assign(new Error('ไม่พบหนังสือ'), { status: 404 });
       return json({ book: { id: book.id, active: book.active } });
+    }
+    if (input.action === 'update-book') {
+      if (typeof input.id !== 'string' || !currentBooks.some(book => book.id === input.id)) return json({ error: 'ไม่พบหนังสือ' }, 404);
+      const fields = ['title', 'subtitle', 'description', 'author'];
+      const changes = Object.fromEntries(fields.map(field => [field, typeof input[field] === 'string' ? input[field].trim() : '']));
+      if (changes.title.length < 3 || changes.title.length > 140 || changes.subtitle.length < 3 || changes.subtitle.length > 180 || changes.description.length < 10 || changes.description.length > 1000 || changes.author.length < 2 || changes.author.length > 100 || !Number.isInteger(input.price) || input.price < 1 || input.price > 100000) return json({ error: 'กรุณาตรวจข้อมูลหนังสือและราคา' }, 400);
+      const book = await updateBookDetails(input.id, { ...changes, price: input.price });
+      return json({ book: { id: book.id, title: book.title, price: book.price } });
     }
     return changeOrder(request, input);
   } catch (error) { return fail(error); }

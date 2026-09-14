@@ -5,6 +5,7 @@ let books = [];
 let currentOrder = null;
 let customerEmail = '';
 let customerUser = null;
+let resetToken = '';
 let authNext = '#catalog';
 let carouselIndex = 1;
 let cart = readSession('safe-cart', []);
@@ -31,6 +32,7 @@ async function api(path, payload) {
 function refreshCartCount() { cartCount.textContent = cart.length; cartCount.hidden = cart.length === 0; }
 function setView(html, active = '') {
   app.innerHTML = html;
+  document.querySelector('[data-nav="profile"]').textContent = customerUser ? 'โปรไฟล์' : 'เข้าสู่ระบบ';
   navLinks.forEach(link => { const on = link.dataset.nav === active; link.classList.toggle('active', on); if (on) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current'); });
   refreshCartCount();
   window.scrollTo(0, 0);
@@ -98,7 +100,7 @@ function detail(id) {
 function authPage(mode = 'login', message = '') {
   if (customerUser) { location.hash = '#profile'; return profile(); }
   const register = mode === 'register';
-  setView(`<section class="profile-layout auth-layout"><div class="white-panel profile-card auth-card"><div class="kicker">CUSTOMER ACCOUNT</div><h1>${register ? 'สมัครสมาชิก' : 'เข้าสู่ระบบ'}</h1><p>เข้าสู่ระบบเพื่อสั่งซื้อ E-book และดูประวัติคำสั่งซื้อของคุณ</p><div class="auth-tabs"><a class="${register ? '' : 'active'}" href="#login">เข้าสู่ระบบ</a><a class="${register ? 'active' : ''}" href="#register">สมัครสมาชิก</a></div>${message ? notice(message, message.startsWith('ยืนยันอีเมลไม่สำเร็จ') ? 'error' : 'success') : ''}<form id="auth-form">${register ? '<label for="auth-name">ชื่อผู้สั่งซื้อ</label><input id="auth-name" name="name" autocomplete="name" required minlength="2" maxlength="80" placeholder="ชื่อและนามสกุล">' : ''}<label for="auth-email">อีเมล</label><input id="auth-email" name="email" type="email" autocomplete="email" required maxlength="254" placeholder="name@example.com"><label for="auth-password">รหัสผ่าน</label><input id="auth-password" name="password" type="password" autocomplete="${register ? 'new-password' : 'current-password'}" required minlength="8" maxlength="128" placeholder="อย่างน้อย 8 ตัวอักษร"><div id="live-message" aria-live="polite"></div><button class="pill-button dark" type="submit">${register ? 'สร้างบัญชี' : 'เข้าสู่ระบบเพื่อซื้อ'}</button></form><p class="auth-note">${register ? 'อาจต้องยืนยันอีเมลก่อนเข้าสู่ระบบ ตามการตั้งค่า Supabase Auth' : 'ยังไม่มีบัญชี? <a href="#register">สมัครสมาชิก</a>'}</p></div><div class="profile-visual"><div class="avatar-graphic" aria-hidden="true"><span></span></div><p>SAFE MODE SHOP</p></div></section>`, 'profile');
+  setView(`<section class="profile-layout auth-layout"><div class="white-panel profile-card auth-card"><div class="kicker">CUSTOMER ACCOUNT</div><h1>${register ? 'สมัครสมาชิก' : 'เข้าสู่ระบบ'}</h1><p>เข้าสู่ระบบเพื่อสั่งซื้อ E-book และดูประวัติคำสั่งซื้อของคุณ</p><div class="auth-tabs"><a class="${register ? '' : 'active'}" href="#login">เข้าสู่ระบบ</a><a class="${register ? 'active' : ''}" href="#register">สมัครสมาชิก</a></div>${message ? notice(message, message.startsWith('ยืนยันอีเมลไม่สำเร็จ') ? 'error' : 'success') : ''}<form id="auth-form">${register ? '<label for="auth-username">Username</label><input id="auth-username" name="username" autocomplete="username" required minlength="3" maxlength="24" pattern="[A-Za-z0-9_]{3,24}" placeholder="เช่น safemode22"><p class="field-note">ใช้ตัวอักษรอังกฤษ ตัวเลข หรือ _ จำนวน 3–24 ตัว</p><label for="auth-email">อีเมล</label><input id="auth-email" name="email" type="email" autocomplete="email" required maxlength="254" placeholder="name@example.com">' : '<label for="auth-identifier">Username หรืออีเมล</label><input id="auth-identifier" name="identifier" autocomplete="username" required maxlength="254" placeholder="Username หรือ name@example.com">'}<label for="auth-password">รหัสผ่าน</label><input id="auth-password" name="password" type="password" autocomplete="${register ? 'new-password' : 'current-password'}" required minlength="8" maxlength="128" placeholder="อย่างน้อย 8 ตัวอักษร"><div id="live-message" aria-live="polite"></div><button class="pill-button dark" type="submit">${register ? 'สร้างบัญชี' : 'เข้าสู่ระบบเพื่อซื้อ'}</button></form><p class="auth-note">${register ? 'อาจต้องยืนยันอีเมลก่อนเข้าสู่ระบบ ตามการตั้งค่า Supabase Auth' : 'ยังไม่มีบัญชี? <a href="#register">สมัครสมาชิก</a> · <a href="#forgot-password">ลืมรหัสผ่าน</a>'}</p></div><div class="profile-visual"><div class="avatar-graphic" aria-hidden="true"><span></span></div><p>SAFE MODE SHOP</p></div></section>`, 'profile');
   document.querySelector('#auth-form').addEventListener('submit', async event => {
     event.preventDefault();
     const form = event.currentTarget;
@@ -106,8 +108,9 @@ function authPage(mode = 'login', message = '') {
     button.disabled = true;
     document.querySelector('#live-message').innerHTML = '';
     try {
-      const payload = { action: register ? 'register' : 'login', email: form.elements.namedItem('email').value, password: form.elements.namedItem('password').value };
-      if (register) payload.name = form.elements.namedItem('name').value;
+      const payload = { action: register ? 'register' : 'login', password: form.elements.namedItem('password').value };
+      if (register) { payload.username = form.elements.namedItem('username').value; payload.email = form.elements.namedItem('email').value; }
+      else payload.identifier = form.elements.namedItem('identifier').value;
       const result = await api('customer', payload);
       if (result.confirmationRequired) {
         location.hash = '#login';
@@ -125,6 +128,40 @@ function authPage(mode = 'login', message = '') {
       document.querySelector('#live-message').innerHTML = notice(error.message);
       button.disabled = false;
     }
+  });
+}
+
+function forgotPage() {
+  setView(`<section class="profile-layout auth-layout"><div class="white-panel profile-card auth-card"><div class="kicker">ACCOUNT RECOVERY</div><h1>ลืมรหัสผ่าน</h1><p>กรอกอีเมลที่ใช้สมัคร เราจะส่งลิงก์เปลี่ยนรหัสผ่านให้</p><form id="forgot-form"><label for="forgot-email">อีเมลบัญชี</label><input id="forgot-email" name="email" type="email" autocomplete="email" required placeholder="name@example.com"><div id="live-message" aria-live="polite"></div><button class="pill-button dark" type="submit">ส่งลิงก์ทางอีเมล</button></form><p class="auth-note"><a href="#login">← กลับไปเข้าสู่ระบบ</a></p></div><div class="profile-visual"><div class="avatar-graphic" aria-hidden="true"></div></div></section>`, 'profile');
+  document.querySelector('#forgot-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    const button = event.currentTarget.querySelector('button');
+    button.disabled = true;
+    try {
+      const result = await api('customer', { action: 'forgot-password', email: event.currentTarget.elements.namedItem('email').value });
+      document.querySelector('#live-message').innerHTML = notice('หากอีเมลนี้มีบัญชีอยู่ กรุณาตรวจกล่องจดหมายและอีเมลขยะ', 'success') + (result.demoResetUrl ? `<p class="auth-note">โหมดทดสอบในเครื่อง: <a href="${esc(result.demoResetUrl)}">เปิดลิงก์เปลี่ยนรหัสผ่าน</a></p>` : '');
+    } catch (error) { document.querySelector('#live-message').innerHTML = notice(error.message); button.disabled = false; }
+  });
+}
+
+function resetPage() {
+  if (!resetToken) return forgotPage();
+  setView(`<section class="profile-layout auth-layout"><div class="white-panel profile-card auth-card"><div class="kicker">ACCOUNT RECOVERY</div><h1>ตั้งรหัสผ่านใหม่</h1><p>รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัวอักษร</p><form id="reset-form"><label for="reset-password">รหัสผ่านใหม่</label><input id="reset-password" name="password" type="password" autocomplete="new-password" required minlength="8" maxlength="128"><label for="reset-confirm">ยืนยันรหัสผ่านใหม่</label><input id="reset-confirm" name="confirm" type="password" autocomplete="new-password" required minlength="8" maxlength="128"><div id="live-message" aria-live="polite"></div><button class="pill-button dark" type="submit">เปลี่ยนรหัสผ่าน</button></form></div><div class="profile-visual"><div class="avatar-graphic" aria-hidden="true"></div></div></section>`, 'profile');
+  document.querySelector('#reset-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const password = form.elements.namedItem('password').value;
+    if (password !== form.elements.namedItem('confirm').value) { document.querySelector('#live-message').innerHTML = notice('รหัสผ่านสองช่องไม่ตรงกัน'); return; }
+    const button = form.querySelector('button');
+    button.disabled = true;
+    try {
+      await api('customer', { action: 'reset-password', token: resetToken, password });
+      resetToken = '';
+      customerUser = null;
+      currentOrder = null;
+      location.hash = '#login';
+      authPage('login', 'เปลี่ยนรหัสผ่านแล้ว กรุณาเข้าสู่ระบบอีกครั้ง');
+    } catch (error) { document.querySelector('#live-message').innerHTML = notice(error.message); button.disabled = false; }
   });
 }
 
@@ -255,13 +292,14 @@ async function history() {
 function profile() {
   if (!customerUser) return authPage();
   const parts = (profileData.name || customerUser.name || '').trim().split(/\s+/);
-  setView(`<section class="profile-layout"><div class="white-panel profile-card"><div class="kicker">CUSTOMER PROFILE</div><h1>โปรไฟล์ลูกค้า</h1><p>คำสั่งซื้อและหนังสือที่ได้รับผูกกับบัญชี ${esc(customerUser.email)}</p><form id="profile-form"><div class="profile-fields"><div><label for="profile-first">ชื่อ</label><input id="profile-first" name="first" autocomplete="given-name" value="${esc(parts[0] || '')}" placeholder="ชื่อ"></div><div><label for="profile-last">นามสกุล</label><input id="profile-last" name="last" autocomplete="family-name" value="${esc(parts.slice(1).join(' '))}" placeholder="นามสกุล"></div></div><label for="profile-email">อีเมลบัญชี</label><input id="profile-email" name="email" type="email" value="${esc(customerUser.email)}" readonly><p class="field-note">ชื่อที่แก้ไขจะใช้กรอกคำสั่งซื้อครั้งถัดไปบนอุปกรณ์นี้</p><div id="live-message" aria-live="polite"></div><div class="profile-actions"><button class="pill-button dark" type="submit">บันทึกชื่อ</button><a class="pill-button outline" href="#history">ประวัติการสั่งซื้อ</a><button class="pill-button danger-outline" id="customer-logout" type="button">ออกจากระบบ</button></div></form></div><div class="profile-visual"><div class="avatar-graphic" aria-hidden="true"><span></span></div><p>SAFE MODE SHOP</p></div></section>`, 'profile');
+  setView(`<section class="profile-layout"><div class="white-panel profile-card"><div class="kicker">CUSTOMER PROFILE</div><h1>โปรไฟล์ลูกค้า</h1><p>คำสั่งซื้อและหนังสือที่ได้รับผูกกับบัญชี ${esc(customerUser.email)}</p>${customerUser.username ? `<p class="profile-username">Username: <strong>${esc(customerUser.username)}</strong></p>` : `<form id="username-form"><label for="profile-username">ตั้ง Username</label><input id="profile-username" name="username" required minlength="3" maxlength="24" pattern="[A-Za-z0-9_]{3,24}" placeholder="เช่น safemode22"><button class="pill-button outline" type="submit">บันทึก Username</button></form>`}<form id="profile-form"><div class="profile-fields"><div><label for="profile-first">ชื่อ</label><input id="profile-first" name="first" autocomplete="given-name" value="${esc(parts[0] || '')}" placeholder="ชื่อ"></div><div><label for="profile-last">นามสกุล</label><input id="profile-last" name="last" autocomplete="family-name" value="${esc(parts.slice(1).join(' '))}" placeholder="นามสกุล"></div></div><label for="profile-email">อีเมลบัญชี</label><input id="profile-email" name="email" type="email" value="${esc(customerUser.email)}" readonly><p class="field-note">ชื่อที่แก้ไขจะใช้กรอกคำสั่งซื้อครั้งถัดไปบนอุปกรณ์นี้</p><div id="live-message" aria-live="polite"></div><div class="profile-actions"><button class="pill-button dark" type="submit">บันทึกชื่อ</button><a class="pill-button outline" href="#history">ประวัติการสั่งซื้อ</a><a class="pill-button outline" href="#forgot-password">เปลี่ยนรหัสผ่าน</a><button class="pill-button danger-outline" id="customer-logout" type="button">ออกจากระบบ</button></div></form></div><div class="profile-visual"><div class="avatar-graphic" aria-hidden="true"><span></span></div><p>SAFE MODE SHOP</p></div></section>`, 'profile');
+  document.querySelector('#username-form')?.addEventListener('submit', async event => { event.preventDefault(); const form = event.currentTarget; const button = form.querySelector('button'); button.disabled = true; try { const result = await api('customer', { action: 'claim-username', username: form.elements.namedItem('username').value }); customerUser = result.user; profile(); } catch (error) { document.querySelector('#live-message').innerHTML = notice(error.message); button.disabled = false; } });
   document.querySelector('#profile-form').addEventListener('submit', event => { event.preventDefault(); const form = event.currentTarget; const first = form.elements.namedItem('first').value.trim(); const last = form.elements.namedItem('last').value.trim(); if (!first) { document.querySelector('#live-message').innerHTML = notice('กรุณากรอกชื่อ'); return; } profileData = { name: [first, last].filter(Boolean).join(' '), email: customerUser.email }; writeSession('safe-profile', profileData); document.querySelector('#live-message').innerHTML = notice('บันทึกชื่อแล้ว', 'success'); });
-  document.querySelector('#customer-logout').addEventListener('click', async event => { event.currentTarget.disabled = true; try { await api('customer', { action: 'logout' }); customerUser = null; currentOrder = null; customerEmail = ''; profileData = { name: '', email: '' }; writeSession('safe-profile', profileData); location.hash = '#login'; authPage(); } catch (error) { document.querySelector('#live-message').innerHTML = notice(error.message); event.currentTarget.disabled = false; } });
+  document.querySelector('#customer-logout').addEventListener('click', async event => { event.currentTarget.disabled = true; try { await api('customer', { action: 'logout' }); customerUser = null; currentOrder = null; customerEmail = ''; cart = []; selected.clear(); saveCart(); profileData = { name: '', email: '' }; writeSession('safe-profile', profileData); location.hash = '#login'; authPage(); } catch (error) { document.querySelector('#live-message').innerHTML = notice(error.message); event.currentTarget.disabled = false; } });
 }
 
 function notFound() { setView(`<section class="white-panel empty-state"><h1>ไม่พบหน้านี้</h1><a class="pill-button dark" href="#home">กลับหน้าแรก</a></section>`); }
-function route() { const [section, id] = location.hash.slice(1).split('/'); if (!section || section === 'home') home(); else if (section === 'catalog') catalog(); else if (section === 'book') detail(id); else if (section === 'cart') cartPage(); else if (section === 'checkout') checkout(id); else if (section === 'order') orderPage(id); else if (section === 'track') track(); else if (section === 'history') history(); else if (section === 'profile') profile(); else if (section === 'login' || section === 'register') authPage(section); else notFound(); }
+function route() { const [section, id] = location.hash.slice(1).split('/'); if (!section || section === 'home') home(); else if (section === 'catalog') catalog(); else if (section === 'book') detail(id); else if (section === 'cart') cartPage(); else if (section === 'checkout') checkout(id); else if (section === 'order') orderPage(id); else if (section === 'track') track(); else if (section === 'history') history(); else if (section === 'profile') profile(); else if (section === 'login' || section === 'register') authPage(section); else if (section === 'forgot-password') forgotPage(); else if (section === 'reset-password') resetPage(); else notFound(); }
 app.addEventListener('click', event => { const add = event.target.closest('[data-add]'); if (add) addToCart(add.dataset.add); });
-try { const [catalog, session] = await Promise.all([api('books'), api('customer?view=session')]); books = catalog.books; customerUser = session.user; if (customerUser && profileData.email !== customerUser.email) profileData = { name: customerUser.name, email: customerUser.email }; cart = cart.filter(id => book(id)); selected = new Set(cart); refreshCartCount(); window.addEventListener('hashchange', route); if (/^#(access_token|error=|error_code=)/.test(location.hash)) { const failed = location.hash.startsWith('#error'); history.replaceState(null, '', '#login'); authPage('login', failed ? 'ยืนยันอีเมลไม่สำเร็จ กรุณาลองใหม่' : 'ยืนยันอีเมลแล้ว กรุณาเข้าสู่ระบบ'); } else route(); }
+try { const [catalog, session] = await Promise.all([api('books'), api('customer?view=session')]); books = catalog.books; customerUser = session.user; if (customerUser && profileData.email !== customerUser.email) profileData = { name: customerUser.name, email: customerUser.email }; cart = cart.filter(id => book(id)); selected = new Set(cart); refreshCartCount(); window.addEventListener('hashchange', route); if (/^#(access_token|error=|error_code=)/.test(location.hash)) { const params = new URLSearchParams(location.hash.slice(1)); const failed = params.has('error'); const recovery = params.get('type') === 'recovery' && params.has('access_token'); resetToken = recovery ? params.get('access_token') : ''; history.replaceState(null, '', recovery ? '#reset-password' : '#login'); if (recovery) resetPage(); else authPage('login', failed ? 'ลิงก์ยืนยันหมดอายุหรือไม่ถูกต้อง' : 'ยืนยันอีเมลแล้ว กรุณาเข้าสู่ระบบ'); } else if (location.hash.startsWith('#reset-password?token=')) { resetToken = new URLSearchParams(location.hash.split('?')[1]).get('token') || ''; history.replaceState(null, '', '#reset-password'); resetPage(); } else route(); }
 catch (error) { app.innerHTML = `<section class="white-panel empty-state">${notice(error.message)}</section>`; }

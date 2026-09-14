@@ -18,12 +18,13 @@ const request = (path, data, cookie) => new Request(`http://localhost:3000/api/$
 
 async function account(label) {
   const email = `${label}-${randomUUID()}@example.com`;
+  const username = `${label}_${randomUUID().slice(0, 8)}`;
   const password = 'local-test-password-123';
-  const registration = await customerApi.fetch(request('customer', { action: 'register', name: 'ทดสอบ ระบบ', email, password }));
+  const registration = await customerApi.fetch(request('customer', { action: 'register', username, email, password }));
   assert.equal(registration.status, 201);
   assert.match(registration.headers.get('set-cookie'), /HttpOnly; SameSite=Strict; Path=\/api/);
   const cookie = registration.headers.get('set-cookie').split(';')[0];
-  return { email, password, cookie };
+  return { email, username, password, cookie };
 }
 
 test('private storage signed URL uses the storage endpoint and server-only key', async () => {
@@ -98,9 +99,31 @@ test('complete local demo flow and protect order lookup and download', async () 
   const login = await customerApi.fetch(request('customer', { action: 'login', email: buyer.email, password: buyer.password }));
   assert.equal(login.status, 200);
   assert.equal((await login.json()).user.email, buyer.email);
+  assert.equal((await customerApi.fetch(request('customer', { action: 'login', identifier: buyer.username, password: buyer.password }))).status, 200);
   assert.equal((await customerApi.fetch(request('customer', { action: 'login', email: buyer.email, password: 'wrong-password' }))).status, 401);
   const logout = await customerApi.fetch(request('customer', { action: 'logout' }, buyer.cookie));
   assert.match(logout.headers.get('set-cookie'), /Max-Age=0/);
+});
+
+test('password recovery invalidates previous sessions and preserves account ownership', async () => {
+  const buyer = await account('recover');
+  const created = await ordersApi.fetch(request('orders', { bookId: 'tarot-app', name: 'ผู้ซื้อ' }, buyer.cookie));
+  assert.equal(created.status, 201);
+  const oldOrder = (await created.json()).order;
+  const forgot = await customerApi.fetch(request('customer', { action: 'forgot-password', email: buyer.email }));
+  assert.equal(forgot.status, 200);
+  const link = (await forgot.json()).demoResetUrl;
+  assert.ok(link);
+  const token = new URL(link).hash.split('token=')[1];
+  const changed = await customerApi.fetch(request('customer', { action: 'reset-password', token, password: 'fresh-password-456' }));
+  assert.equal(changed.status, 200);
+  assert.equal((await orderApi.fetch(request('order', { id: oldOrder.id }, buyer.cookie))).status, 401);
+  assert.equal((await customerApi.fetch(request('customer', { action: 'login', identifier: buyer.username, password: buyer.password }))).status, 401);
+  const newLogin = await customerApi.fetch(request('customer', { action: 'login', identifier: buyer.username, password: 'fresh-password-456' }));
+  assert.equal(newLogin.status, 200);
+  const newCookie = newLogin.headers.get('set-cookie').split(';')[0];
+  assert.equal((await orderApi.fetch(request('order', { id: oldOrder.id }, newCookie))).status, 200);
+  assert.equal((await customerApi.fetch(request('customer', { action: 'reset-password', token, password: 'another-password' }))).status, 403);
 });
 
 test('cart checkout keeps multiple books together and scopes each download', async () => {
