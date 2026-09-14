@@ -1,6 +1,29 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { deliverEmail, verifyDownloadToken } from '../lib/delivery.js';
+import { deliverEmail, emailConfigured, verifyDownloadToken } from '../lib/delivery.js';
+
+test('placeholder sender settings do not attempt email delivery', async () => {
+  const names = ['VERCEL', 'DOWNLOAD_SECRET', 'RESEND_API_KEY', 'EMAIL_FROM'];
+  const previous = Object.fromEntries(names.map(name => [name, process.env[name]]));
+  const originalFetch = globalThis.fetch;
+  process.env.VERCEL = '1';
+  process.env.DOWNLOAD_SECRET = 'test-only-download-secret-with-32-characters';
+  process.env.RESEND_API_KEY = 're_REPLACE_ME';
+  process.env.EMAIL_FROM = 'Demo <books@YOUR_VERIFIED_DOMAIN>';
+  globalThis.fetch = () => { throw new Error('Resend must not be called'); };
+  try {
+    assert.equal(emailConfigured(), false);
+    const result = await deliverEmail({ id: 'EB-1234567890ABCDEF12345678', book_id: 'media-player-pro', email: 'buyer@example.org' }, [{ id: 'media-player-pro' }], 'https://shop.example.org');
+    assert.equal(result.emailStatus, 'NOT_CONFIGURED');
+    assert.ok(result.downloadUrls['media-player-pro']);
+  } finally {
+    globalThis.fetch = originalFetch;
+    for (const name of names) {
+      if (previous[name] === undefined) delete process.env[name];
+      else process.env[name] = previous[name];
+    }
+  }
+});
 
 test('email outage preserves download access and a retry reuses the same request', async () => {
   const names = ['VERCEL', 'DOWNLOAD_SECRET', 'RESEND_API_KEY', 'EMAIL_FROM'];

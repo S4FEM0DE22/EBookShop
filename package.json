@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "node server.mjs",
-    "dev:supabase": "node --env-file=.env.local server.mjs",
+    "dev:supabase": "node scripts/start-supabase.mjs",
     "test": "node --test"
   },
   "engines": { "node": ">=20" }

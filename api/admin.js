@@ -1,5 +1,6 @@
 import { adminConfigured, clearSessionCookie, correctPassword, isAdmin, sessionCookie } from '../lib/admin-auth.js';
 import { listCustomerProfiles } from '../lib/customer-auth.js';
+import { emailConfigured } from '../lib/delivery.js';
 import { body, fail, json, orderView } from '../lib/http.js';
 import { books as currentBooks } from '../lib/catalog.js';
 import { getOrder, listAllBooks, listOrders, setBookActive, updateBookDetails } from '../lib/store.js';
@@ -51,7 +52,7 @@ export default { async fetch(request) {
         books: books.filter(book => currentIds.has(book.id)).map(({ file, ...book }) => book),
         orders: orders.map(order => orderView(order, (Array.isArray(order.book_ids) && order.book_ids.length ? order.book_ids : [order.book_id]).map(id => bookMap.get(id)).filter(Boolean))),
         customers: customers.map(item => ({ username: item.username, email: item.email, createdAt: item.created_at })),
-        emailConfigured: Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM && !process.env.RESEND_API_KEY.includes('REPLACE'))
+        emailConfigured: emailConfigured()
       });
     }
     if (request.method !== 'POST') throw Object.assign(new Error('Method not allowed'), { status: 405 });
