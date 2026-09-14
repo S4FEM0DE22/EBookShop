@@ -1,18 +1,30 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import booksApi from '../api/books.js';
+import customerApi from '../api/customer.js';
 import ordersApi from '../api/orders.js';
 import orderApi from '../api/order.js';
 import payApi from '../api/pay.js';
 import cancelApi from '../api/cancel.js';
 import downloadApi from '../api/download.js';
 import { makeDownloadToken, signedBookUrl } from '../lib/delivery.js';
+import { randomUUID } from 'node:crypto';
 
-const request = (path, data) => new Request(`http://localhost:3000/api/${path}`, {
+const request = (path, data, cookie) => new Request(`http://localhost:3000/api/${path}`, {
   method: data ? 'POST' : 'GET',
-  headers: data ? { 'Content-Type': 'application/json' } : {},
+  headers: { ...(data ? { 'Content-Type': 'application/json' } : {}), ...(cookie ? { Cookie: cookie } : {}) },
   body: data ? JSON.stringify(data) : undefined
 });
+
+async function account(label) {
+  const email = `${label}-${randomUUID()}@example.com`;
+  const password = 'local-test-password-123';
+  const registration = await customerApi.fetch(request('customer', { action: 'register', name: 'ทดสอบ ระบบ', email, password }));
+  assert.equal(registration.status, 201);
+  assert.match(registration.headers.get('set-cookie'), /HttpOnly; SameSite=Strict; Path=\/api/);
+  const cookie = registration.headers.get('set-cookie').split(';')[0];
+  return { email, password, cookie };
+}
 
 test('private storage signed URL uses the storage endpoint and server-only key', async () => {
   const oldUrl = process.env.SUPABASE_URL;
@@ -38,32 +50,35 @@ test('private storage signed URL uses the storage endpoint and server-only key',
 });
 
 test('complete local demo flow and protect order lookup and download', async () => {
+  const buyer = await account('buyer');
+  const stranger = await account('stranger');
   const catalog = await (await booksApi.fetch(request('books'))).json();
   assert.equal(catalog.books.length, 4);
   assert.ok(catalog.books.every(item => item.title && item.description && item.price));
   assert.deepEqual(catalog.books.map(item => item.id), ['media-player-pro', 'tarot-app', 'sqlite-task-manager-guide', 'sqlite-task-manager-report']);
   assert.ok(catalog.books.every(item => item.cover.startsWith('/assets/covers/') && !('file' in item)));
 
-  const created = await ordersApi.fetch(request('orders', { bookId: 'media-player-pro', name: 'ทดสอบ ระบบ', email: 'Test@Example.com' }));
+  assert.equal((await ordersApi.fetch(request('orders', { bookId: 'media-player-pro', name: 'ทดสอบ ระบบ' }))).status, 401);
+  const created = await ordersApi.fetch(request('orders', { bookId: 'media-player-pro', name: 'ทดสอบ ระบบ', email: stranger.email }, buyer.cookie));
   assert.equal(created.status, 201);
   const order = (await created.json()).order;
   assert.match(order.id, /^EB-[A-F0-9]{24}$/);
   assert.equal(order.status, 'PENDING');
-  assert.equal(order.email, 'test@example.com');
+  assert.equal(order.email, buyer.email);
 
-  const badLookup = await orderApi.fetch(request('order', { id: order.id, email: 'other@example.com' }));
+  const badLookup = await orderApi.fetch(request('order', { id: order.id, email: buyer.email }, stranger.cookie));
   assert.equal(badLookup.status, 404);
-  const badPay = await payApi.fetch(request('pay', { id: order.id, email: 'other@example.com' }));
+  const badPay = await payApi.fetch(request('pay', { id: order.id, email: buyer.email }, stranger.cookie));
   assert.equal(badPay.status, 404);
 
-  const lookedUp = await orderApi.fetch(request('order', { id: order.id, email: order.email }));
+  const lookedUp = await orderApi.fetch(request('order', { id: order.id }, buyer.cookie));
   assert.equal((await lookedUp.json()).order.status, 'PENDING');
-  const paidResponse = await payApi.fetch(request('pay', { id: order.id, email: order.email }));
+  const paidResponse = await payApi.fetch(request('pay', { id: order.id }, buyer.cookie));
   const paid = (await paidResponse.json()).order;
   assert.equal(paid.status, 'PAID');
   assert.equal(paid.emailStatus, 'DEMO');
   assert.ok(paid.downloadUrl);
-  const lateCancel = await cancelApi.fetch(request('cancel', { id: order.id, email: order.email }));
+  const lateCancel = await cancelApi.fetch(request('cancel', { id: order.id }, buyer.cookie));
   assert.equal(lateCancel.status, 409);
 
   const download = await downloadApi.fetch(new Request(paid.downloadUrl));
@@ -74,23 +89,35 @@ test('complete local demo flow and protect order lookup and download', async () 
 
   const invalid = await downloadApi.fetch(request('download?token=invalid'));
   assert.equal(invalid.status, 403);
-  const revisited = await orderApi.fetch(request('order', { id: order.id, email: order.email }));
+  const revisited = await orderApi.fetch(request('order', { id: order.id }, buyer.cookie));
   assert.ok((await revisited.json()).order.downloadUrl);
+  const history = await customerApi.fetch(request('customer?view=orders', undefined, buyer.cookie));
+  assert.ok((await history.json()).orders.some(item => item.id === order.id));
+  const unrelatedHistory = await customerApi.fetch(request('customer?view=orders', undefined, stranger.cookie));
+  assert.ok(!(await unrelatedHistory.json()).orders.some(item => item.id === order.id));
+  const login = await customerApi.fetch(request('customer', { action: 'login', email: buyer.email, password: buyer.password }));
+  assert.equal(login.status, 200);
+  assert.equal((await login.json()).user.email, buyer.email);
+  assert.equal((await customerApi.fetch(request('customer', { action: 'login', email: buyer.email, password: 'wrong-password' }))).status, 401);
+  const logout = await customerApi.fetch(request('customer', { action: 'logout' }, buyer.cookie));
+  assert.match(logout.headers.get('set-cookie'), /Max-Age=0/);
 });
 
 test('cart checkout keeps multiple books together and scopes each download', async () => {
+  const buyer = await account('cart');
   const response = await ordersApi.fetch(request('orders', {
     bookIds: ['media-player-pro', 'tarot-app', 'sqlite-task-manager-guide', 'sqlite-task-manager-report'],
     name: 'ผู้ทดสอบ',
-    email: 'cart@example.com'
-  }));
+    email: 'spoofed@example.com'
+  }, buyer.cookie));
   assert.equal(response.status, 201);
   const created = (await response.json()).order;
   assert.equal(created.status, 'PENDING');
+  assert.equal(created.email, buyer.email);
   assert.equal(created.items.length, 4);
   assert.equal(created.price, created.items.reduce((sum, item) => sum + item.price, 0));
 
-  const paid = (await (await payApi.fetch(request('pay', { id: created.id, email: created.email }))).json()).order;
+  const paid = (await (await payApi.fetch(request('pay', { id: created.id }, buyer.cookie))).json()).order;
   assert.equal(paid.status, 'PAID');
   assert.equal(Object.keys(paid.downloadUrls).length, 4);
   for (const item of paid.items) {
@@ -104,16 +131,18 @@ test('cart checkout keeps multiple books together and scopes each download', asy
 });
 
 test('pending orders can be cancelled but cannot be paid or downloaded afterward', async () => {
-  const created = await ordersApi.fetch(request('orders', { bookId: 'tarot-app', name: 'ยกเลิก ทดสอบ', email: 'cancel@example.com' }));
+  const buyer = await account('cancel');
+  const stranger = await account('other');
+  const created = await ordersApi.fetch(request('orders', { bookId: 'tarot-app', name: 'ยกเลิก ทดสอบ' }, buyer.cookie));
   const order = (await created.json()).order;
-  const wrongEmail = await cancelApi.fetch(request('cancel', { id: order.id, email: 'other@example.com' }));
+  const wrongEmail = await cancelApi.fetch(request('cancel', { id: order.id, email: buyer.email }, stranger.cookie));
   assert.equal(wrongEmail.status, 404);
 
-  const cancelled = await cancelApi.fetch(request('cancel', { id: order.id, email: order.email }));
+  const cancelled = await cancelApi.fetch(request('cancel', { id: order.id }, buyer.cookie));
   assert.equal((await cancelled.json()).order.status, 'CANCELLED');
-  const lookup = await orderApi.fetch(request('order', { id: order.id, email: order.email }));
+  const lookup = await orderApi.fetch(request('order', { id: order.id }, buyer.cookie));
   assert.equal((await lookup.json()).order.status, 'CANCELLED');
-  const paid = await payApi.fetch(request('pay', { id: order.id, email: order.email }));
+  const paid = await payApi.fetch(request('pay', { id: order.id }, buyer.cookie));
   assert.equal(paid.status, 409);
   const token = makeDownloadToken({ id: order.id, book_id: 'tarot-app' });
   const download = await downloadApi.fetch(request(`download?token=${token}`));

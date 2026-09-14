@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 const root = path.dirname(fileURLToPath(import.meta.url));
 const routes = new Map([
   ['/api/books', () => import('./api/books.js')],
+  ['/api/customer', () => import('./api/customer.js')],
   ['/api/orders', () => import('./api/orders.js')],
   ['/api/order', () => import('./api/order.js')],
   ['/api/pay', () => import('./api/pay.js')],

@@ -4,10 +4,11 @@ const cartCount = document.querySelector('#cart-count');
 let books = [];
 let currentOrder = null;
 let customerEmail = '';
+let customerUser = null;
+let authNext = '#catalog';
 let carouselIndex = 1;
 let cart = readSession('safe-cart', []);
 let selected = new Set(cart);
-let receipts = readSession('safe-orders', []);
 let profileData = readSession('safe-profile', { name: '', email: '' });
 
 function readSession(key, fallback) {
@@ -54,8 +55,8 @@ function orderRow(order, mode = 'track') {
   </article>`;
 }
 async function sessionOrders() {
-  const result = await Promise.all(receipts.map(async receipt => { try { return (await api('order', receipt)).order; } catch { return null; } }));
-  return result.filter(Boolean);
+  if (!customerUser) return [];
+  return (await api('customer?view=orders')).orders;
 }
 function bindOpenOrders(container, orders) {
   container.querySelectorAll('[data-open-order]').forEach(button => button.addEventListener('click', () => {
@@ -94,6 +95,47 @@ function detail(id) {
     <section class="white-panel detail-panel"><div class="detail-cover">${cover(item)}</div><div class="detail-copy"><div class="kicker">E-BOOK / PDF</div><h2>${esc(item.title)}</h2><p class="detail-subtitle">${esc(item.subtitle)}</p><p>${esc(item.description)}</p><div class="detail-meta"><span>ผู้จัดทำ <strong>${esc(item.author)}</strong></span><span>รูปแบบ <strong>PDF</strong></span></div><strong class="detail-price">${money(item.price)}</strong><div class="detail-actions"><button class="pill-button dark" type="button" data-add="${esc(item.id)}">เพิ่มลงตะกร้า</button><a class="pill-button outline" href="#checkout/${esc(item.id)}">สั่งซื้อเล่มนี้</a></div></div></section>`, 'catalog');
 }
 
+function authPage(mode = 'login', message = '') {
+  if (customerUser) { location.hash = '#profile'; return profile(); }
+  const register = mode === 'register';
+  setView(`<section class="profile-layout auth-layout"><div class="white-panel profile-card auth-card"><div class="kicker">CUSTOMER ACCOUNT</div><h1>${register ? 'สมัครสมาชิก' : 'เข้าสู่ระบบ'}</h1><p>เข้าสู่ระบบเพื่อสั่งซื้อ E-book และดูประวัติคำสั่งซื้อของคุณ</p><div class="auth-tabs"><a class="${register ? '' : 'active'}" href="#login">เข้าสู่ระบบ</a><a class="${register ? 'active' : ''}" href="#register">สมัครสมาชิก</a></div>${message ? notice(message, message.startsWith('ยืนยันอีเมลไม่สำเร็จ') ? 'error' : 'success') : ''}<form id="auth-form">${register ? '<label for="auth-name">ชื่อผู้สั่งซื้อ</label><input id="auth-name" name="name" autocomplete="name" required minlength="2" maxlength="80" placeholder="ชื่อและนามสกุล">' : ''}<label for="auth-email">อีเมล</label><input id="auth-email" name="email" type="email" autocomplete="email" required maxlength="254" placeholder="name@example.com"><label for="auth-password">รหัสผ่าน</label><input id="auth-password" name="password" type="password" autocomplete="${register ? 'new-password' : 'current-password'}" required minlength="8" maxlength="128" placeholder="อย่างน้อย 8 ตัวอักษร"><div id="live-message" aria-live="polite"></div><button class="pill-button dark" type="submit">${register ? 'สร้างบัญชี' : 'เข้าสู่ระบบเพื่อซื้อ'}</button></form><p class="auth-note">${register ? 'อาจต้องยืนยันอีเมลก่อนเข้าสู่ระบบ ตามการตั้งค่า Supabase Auth' : 'ยังไม่มีบัญชี? <a href="#register">สมัครสมาชิก</a>'}</p></div><div class="profile-visual"><div class="avatar-graphic" aria-hidden="true"><span></span></div><p>SAFE MODE SHOP</p></div></section>`, 'profile');
+  document.querySelector('#auth-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const button = form.querySelector('button[type=submit]');
+    button.disabled = true;
+    document.querySelector('#live-message').innerHTML = '';
+    try {
+      const payload = { action: register ? 'register' : 'login', email: form.elements.namedItem('email').value, password: form.elements.namedItem('password').value };
+      if (register) payload.name = form.elements.namedItem('name').value;
+      const result = await api('customer', payload);
+      if (result.confirmationRequired) {
+        location.hash = '#login';
+        authPage('login', 'สมัครสมาชิกแล้ว กรุณายืนยันอีเมลจากจดหมายที่ได้รับก่อนเข้าสู่ระบบ');
+        return;
+      }
+      customerUser = result.user;
+      profileData = { name: profileData.email === customerUser.email ? profileData.name || customerUser.name : customerUser.name, email: customerUser.email };
+      writeSession('safe-profile', profileData);
+      const next = authNext;
+      authNext = '#catalog';
+      location.hash = next;
+      route();
+    } catch (error) {
+      document.querySelector('#live-message').innerHTML = notice(error.message);
+      button.disabled = false;
+    }
+  });
+}
+
+function requireLogin(next) {
+  if (customerUser) return true;
+  authNext = next;
+  location.hash = '#login';
+  authPage();
+  return false;
+}
+
 function cartPage() {
   const items = cart.map(book).filter(Boolean);
   const selectedItems = items.filter(item => selected.has(item.id));
@@ -104,6 +146,7 @@ function cartPage() {
 }
 
 function checkout(singleId = '') {
+  if (!requireLogin(singleId ? `#checkout/${singleId}` : '#checkout')) return;
   const ids = singleId ? [singleId] : cart.filter(id => selected.has(id));
   const items = ids.map(book).filter(Boolean);
   if (!items.length) return cartPage();
@@ -111,15 +154,13 @@ function checkout(singleId = '') {
   setView(`<a class="back-link" href="${singleId ? `#book/${esc(singleId)}` : '#cart'}">← กลับไปตรวจรายการ</a>${pageHead('การชำระสินค้า')}
     <section class="white-panel checkout-panel"><div class="checkout-title"><div><div class="kicker">CHECKOUT / DEMO</div><h2>ยืนยันคำสั่งซื้อ</h2></div><span class="status-pill pending">ยังไม่ชำระ</span></div>${demo}
     <div class="checkout-columns"><div><h3>รายการสินค้า</h3>${items.map(item => `<div class="checkout-item"><div class="checkout-cover">${cover(item)}</div><div><strong>${esc(item.title)}</strong><p>${esc(item.subtitle)}</p><b>${money(item.price)}</b></div></div>`).join('')}<div class="checkout-total"><span>ยอดรวมจำลอง</span><strong>${money(total)}</strong></div></div>
-    <div><h3>ข้อมูลสำหรับรับหนังสือ</h3><form id="checkout-form"><label for="buyer-name">ชื่อผู้สั่งซื้อ</label><input id="buyer-name" name="name" minlength="2" maxlength="80" autocomplete="name" required value="${esc(profileData.name)}" placeholder="ชื่อของคุณ"><label for="buyer-email">อีเมล</label><input id="buyer-email" name="email" type="email" maxlength="254" autocomplete="email" required value="${esc(profileData.email)}" placeholder="name@example.com"><p class="field-note">ใช้รับลิงก์ดาวน์โหลดและติดตามคำสั่งซื้อ</p><div id="live-message" aria-live="polite"></div><button class="pill-button dark wide" type="submit">สร้างคำสั่งซื้อ PENDING</button></form></div></div></section>`, 'orders');
+    <div><h3>ข้อมูลสำหรับรับหนังสือ</h3><form id="checkout-form"><label for="buyer-name">ชื่อผู้สั่งซื้อ</label><input id="buyer-name" name="name" minlength="2" maxlength="80" autocomplete="name" required value="${esc(profileData.name || customerUser.name)}" placeholder="ชื่อของคุณ"><label for="buyer-email">อีเมลบัญชี</label><input id="buyer-email" name="email" type="email" value="${esc(customerUser.email)}" readonly><p class="field-note">หนังสือและคำสั่งซื้อจะผูกกับอีเมลบัญชีนี้</p><div id="live-message" aria-live="polite"></div><button class="pill-button dark wide" type="submit">สร้างคำสั่งซื้อ PENDING</button></form></div></div></section>`, 'orders');
   document.querySelector('#checkout-form').addEventListener('submit', async event => {
     event.preventDefault(); const form = event.currentTarget; const button = form.querySelector('button[type=submit]'); button.disabled = true;
     document.querySelector('#live-message').innerHTML = '';
     try {
-      const { order } = await api('orders', { bookIds: ids, name: form.elements.namedItem('name').value, email: form.elements.namedItem('email').value });
+      const { order } = await api('orders', { bookIds: ids, name: form.elements.namedItem('name').value });
       currentOrder = order; customerEmail = order.email;
-      receipts = [{ id: order.id, email: order.email }, ...receipts.filter(item => item.id !== order.id)].slice(0, 20);
-      writeSession('safe-orders', receipts);
       cart = cart.filter(id => !ids.includes(id)); ids.forEach(id => selected.delete(id)); saveCart();
       location.hash = `#order/${order.id}`; orderPage(order.id);
     } catch (error) { document.querySelector('#live-message').innerHTML = notice(error.message); button.disabled = false; }
@@ -147,6 +188,7 @@ function pendingPayment(order, items) {
 }
 
 function orderPage(id) {
+  if (!requireLogin(`#order/${id}`)) return;
   if (!currentOrder || currentOrder.id !== id) return track(id);
   const order = currentOrder;
   const paid = order.status === 'PAID';
@@ -164,19 +206,22 @@ function orderPage(id) {
 }
 
 async function track(prefill = '') {
-  setView(`${orderTabs('track')}<section class="white-panel tracking-panel"><div class="tracking-heading"><h1>รายการการสั่งซื้อทั้งหมด</h1><button class="tracking-lookup-trigger" id="open-track-search" type="button" aria-label="ค้นหาคำสั่งซื้อด้วยเลขคำสั่งซื้อและอีเมล" aria-haspopup="dialog" aria-controls="track-search-dialog"><span class="tracking-search-label">ค้นหา<span class="tracking-search-extra">คำสั่งซื้อ</span></span><span class="tracking-search-icon" aria-hidden="true"></span></button></div><p class="tracking-note">คำสั่งซื้อที่ยืนยันในเซสชันนี้ · การชำระเงินเป็นระบบจำลอง</p><div id="track-message" aria-live="polite"></div><div id="tracking-list" class="tracking-list"><div class="loading">กำลังโหลดรายการ…</div></div>
-    <dialog class="track-dialog" id="track-search-dialog" aria-labelledby="track-dialog-title"><div class="track-dialog-head"><div><div class="kicker">FIND YOUR ORDER</div><h2 id="track-dialog-title">ค้นหาคำสั่งซื้อ</h2><p>กรอกเลขคำสั่งซื้อและอีเมลเดียวกับที่ใช้สั่งซื้อ</p></div><button class="track-dialog-close" id="close-track-search" type="button" aria-label="ปิดหน้าต่างค้นหา">×</button></div><form id="track-form"><label for="track-id">เลขคำสั่งซื้อ</label><input id="track-id" name="id" required maxlength="27" value="${esc(prefill)}" placeholder="EB-..." autofocus><label for="track-email">อีเมล</label><input id="track-email" name="email" type="email" required placeholder="name@example.com"><div id="live-message" aria-live="polite"></div><div class="track-dialog-actions"><button class="pill-button outline" id="cancel-track-search" type="button">ปิด</button><button class="pill-button dark" type="submit">ดูสถานะคำสั่งซื้อ</button></div></form></dialog></section>`, 'orders');
+  if (!requireLogin(prefill ? `#order/${prefill}` : '#track')) return;
+  setView(`${orderTabs('track')}<section class="white-panel tracking-panel"><div class="tracking-heading"><h1>รายการการสั่งซื้อทั้งหมด</h1><button class="tracking-lookup-trigger" id="open-track-search" type="button" aria-label="ค้นหาคำสั่งซื้อด้วยเลขคำสั่งซื้อและอีเมล" aria-haspopup="dialog" aria-controls="track-search-dialog"><span class="tracking-search-label">ค้นหา<span class="tracking-search-extra">คำสั่งซื้อ</span></span><span class="tracking-search-icon" aria-hidden="true"></span></button></div><p class="tracking-note">คำสั่งซื้อของ ${esc(customerUser.email)} · การชำระเงินเป็นระบบจำลอง</p><div id="track-message" aria-live="polite"></div><div id="tracking-list" class="tracking-list"><div class="loading">กำลังโหลดรายการ…</div></div>
+    <dialog class="track-dialog" id="track-search-dialog" aria-labelledby="track-dialog-title"><div class="track-dialog-head"><div><div class="kicker">FIND YOUR ORDER</div><h2 id="track-dialog-title">ค้นหาคำสั่งซื้อ</h2><p>กรอกเลขคำสั่งซื้อที่ผูกกับอีเมลบัญชีนี้</p></div><button class="track-dialog-close" id="close-track-search" type="button" aria-label="ปิดหน้าต่างค้นหา">×</button></div><form id="track-form"><label for="track-id">เลขคำสั่งซื้อ</label><input id="track-id" name="id" required maxlength="27" value="${esc(prefill)}" placeholder="EB-..." autofocus><label for="track-email">อีเมลบัญชี</label><input id="track-email" name="email" type="email" value="${esc(customerUser.email)}" readonly><div id="live-message" aria-live="polite"></div><div class="track-dialog-actions"><button class="pill-button outline" id="cancel-track-search" type="button">ปิด</button><button class="pill-button dark" type="submit">ดูสถานะคำสั่งซื้อ</button></div></form></dialog></section>`, 'orders');
   const dialog = document.querySelector('#track-search-dialog');
   document.querySelector('#open-track-search').addEventListener('click', () => dialog.showModal());
   document.querySelector('#close-track-search').addEventListener('click', () => dialog.close());
   document.querySelector('#cancel-track-search').addEventListener('click', () => dialog.close());
   dialog.addEventListener('click', event => { if (event.target === dialog) dialog.close(); });
   if (prefill) dialog.showModal();
-  document.querySelector('#track-form').addEventListener('submit', async event => { event.preventDefault(); const form = event.currentTarget; const button = form.querySelector('button[type=submit]'); button.disabled = true; try { const data = await api('order', { id: form.elements.namedItem('id').value.trim().toUpperCase(), email: form.elements.namedItem('email').value }); currentOrder = data.order; customerEmail = data.order.email; receipts = [{ id: data.order.id, email: data.order.email }, ...receipts.filter(item => item.id !== data.order.id)].slice(0, 20); writeSession('safe-orders', receipts); dialog.close(); location.hash = `#order/${data.order.id}`; orderPage(data.order.id); } catch (error) { document.querySelector('#live-message').innerHTML = notice(error.message); button.disabled = false; } });
+  document.querySelector('#track-form').addEventListener('submit', async event => { event.preventDefault(); const form = event.currentTarget; const button = form.querySelector('button[type=submit]'); button.disabled = true; try { const data = await api('order', { id: form.elements.namedItem('id').value.trim().toUpperCase() }); currentOrder = data.order; customerEmail = data.order.email; dialog.close(); location.hash = `#order/${data.order.id}`; orderPage(data.order.id); } catch (error) { document.querySelector('#live-message').innerHTML = notice(error.message); button.disabled = false; } });
   const list = document.querySelector('#tracking-list');
-  const orders = await sessionOrders();
+  let orders;
+  try { orders = await sessionOrders(); }
+  catch (error) { if (list.isConnected) list.innerHTML = notice(error.message); return; }
   if (!list.isConnected) return;
-  list.innerHTML = orders.length ? orders.map(order => orderRow(order)).join('') : `<div class="empty-state"><p>ยังไม่มีคำสั่งซื้อในเซสชันนี้</p><a class="pill-button dark" href="#catalog">เลือกหนังสือ</a></div>`;
+  list.innerHTML = orders.length ? orders.map(order => orderRow(order)).join('') : `<div class="empty-state"><p>บัญชีนี้ยังไม่มีคำสั่งซื้อ</p><a class="pill-button dark" href="#catalog">เลือกหนังสือ</a></div>`;
   bindOpenOrders(list, orders);
   for (const action of ['pay', 'cancel']) {
     list.querySelectorAll(`[data-track-${action}]`).forEach(button => button.addEventListener('click', async () => {
@@ -196,22 +241,27 @@ async function track(prefill = '') {
 }
 
 async function history() {
-  setView(`${orderTabs('history')}<section class="white-panel tracking-panel history-panel"><h1>ประวัติการสั่งซื้อทั้งหมด</h1><p class="tracking-note">แสดงเฉพาะคำสั่งซื้อที่ยืนยันในเซสชันนี้</p><div id="history-list" class="tracking-list"><div class="loading">กำลังโหลดรายการ…</div></div></section>`, 'orders');
+  if (!requireLogin('#history')) return;
+  setView(`${orderTabs('history')}<section class="white-panel tracking-panel history-panel"><h1>ประวัติการสั่งซื้อทั้งหมด</h1><p class="tracking-note">คำสั่งซื้อของ ${esc(customerUser.email)}</p><div id="history-list" class="tracking-list"><div class="loading">กำลังโหลดรายการ…</div></div></section>`, 'orders');
   const list = document.querySelector('#history-list');
-  const orders = await sessionOrders();
+  let orders;
+  try { orders = await sessionOrders(); }
+  catch (error) { if (list.isConnected) list.innerHTML = notice(error.message); return; }
   if (!list.isConnected) return;
-  list.innerHTML = orders.length ? orders.map(order => orderRow(order, 'history')).join('') : `<div class="empty-state"><p>ยังไม่มีประวัติในเซสชันนี้</p><a class="pill-button dark" href="#catalog">เลือกหนังสือ</a></div>`;
+  list.innerHTML = orders.length ? orders.map(order => orderRow(order, 'history')).join('') : `<div class="empty-state"><p>บัญชีนี้ยังไม่มีประวัติคำสั่งซื้อ</p><a class="pill-button dark" href="#catalog">เลือกหนังสือ</a></div>`;
   bindOpenOrders(list, orders);
 }
 
 function profile() {
-  const parts = profileData.name.trim().split(/\s+/);
-  setView(`<section class="profile-layout"><div class="white-panel profile-card"><div class="kicker">LOCAL PROFILE</div><h1>ข้อมูลสำหรับสั่งซื้อ</h1><p>บันทึกเฉพาะในเซสชันนี้เพื่อกรอก Checkout ให้เร็วขึ้น ไม่มีบัญชีหรือรหัสผ่าน</p><form id="profile-form"><div class="profile-fields"><div><label for="profile-first">ชื่อ</label><input id="profile-first" name="first" autocomplete="given-name" value="${esc(parts[0] || '')}" placeholder="ชื่อ"></div><div><label for="profile-last">นามสกุล</label><input id="profile-last" name="last" autocomplete="family-name" value="${esc(parts.slice(1).join(' '))}" placeholder="นามสกุล"></div></div><label for="profile-email">อีเมล</label><input id="profile-email" name="email" type="email" autocomplete="email" value="${esc(profileData.email)}" placeholder="name@example.com"><div id="live-message" aria-live="polite"></div><div class="profile-actions"><button class="pill-button dark" type="submit">บันทึกข้อมูล</button><a class="pill-button outline" href="#history">ประวัติการสั่งซื้อ</a></div></form></div><div class="profile-visual"><div class="avatar-graphic" aria-hidden="true"><span></span></div><p>SAFE MODE SHOP</p></div></section>`, 'profile');
-  document.querySelector('#profile-form').addEventListener('submit', event => { event.preventDefault(); const form = event.currentTarget; const first = form.elements.namedItem('first').value.trim(); const last = form.elements.namedItem('last').value.trim(); const email = form.elements.namedItem('email').value.trim(); if (!first || (email && !form.elements.namedItem('email').validity.valid)) { document.querySelector('#live-message').innerHTML = notice('กรุณาตรวจชื่อและอีเมล'); return; } profileData = { name: [first, last].filter(Boolean).join(' '), email }; writeSession('safe-profile', profileData); document.querySelector('#live-message').innerHTML = notice('บันทึกข้อมูลในเซสชันนี้แล้ว', 'success'); });
+  if (!customerUser) return authPage();
+  const parts = (profileData.name || customerUser.name || '').trim().split(/\s+/);
+  setView(`<section class="profile-layout"><div class="white-panel profile-card"><div class="kicker">CUSTOMER PROFILE</div><h1>โปรไฟล์ลูกค้า</h1><p>คำสั่งซื้อและหนังสือที่ได้รับผูกกับบัญชี ${esc(customerUser.email)}</p><form id="profile-form"><div class="profile-fields"><div><label for="profile-first">ชื่อ</label><input id="profile-first" name="first" autocomplete="given-name" value="${esc(parts[0] || '')}" placeholder="ชื่อ"></div><div><label for="profile-last">นามสกุล</label><input id="profile-last" name="last" autocomplete="family-name" value="${esc(parts.slice(1).join(' '))}" placeholder="นามสกุล"></div></div><label for="profile-email">อีเมลบัญชี</label><input id="profile-email" name="email" type="email" value="${esc(customerUser.email)}" readonly><p class="field-note">ชื่อที่แก้ไขจะใช้กรอกคำสั่งซื้อครั้งถัดไปบนอุปกรณ์นี้</p><div id="live-message" aria-live="polite"></div><div class="profile-actions"><button class="pill-button dark" type="submit">บันทึกชื่อ</button><a class="pill-button outline" href="#history">ประวัติการสั่งซื้อ</a><button class="pill-button danger-outline" id="customer-logout" type="button">ออกจากระบบ</button></div></form></div><div class="profile-visual"><div class="avatar-graphic" aria-hidden="true"><span></span></div><p>SAFE MODE SHOP</p></div></section>`, 'profile');
+  document.querySelector('#profile-form').addEventListener('submit', event => { event.preventDefault(); const form = event.currentTarget; const first = form.elements.namedItem('first').value.trim(); const last = form.elements.namedItem('last').value.trim(); if (!first) { document.querySelector('#live-message').innerHTML = notice('กรุณากรอกชื่อ'); return; } profileData = { name: [first, last].filter(Boolean).join(' '), email: customerUser.email }; writeSession('safe-profile', profileData); document.querySelector('#live-message').innerHTML = notice('บันทึกชื่อแล้ว', 'success'); });
+  document.querySelector('#customer-logout').addEventListener('click', async event => { event.currentTarget.disabled = true; try { await api('customer', { action: 'logout' }); customerUser = null; currentOrder = null; customerEmail = ''; profileData = { name: '', email: '' }; writeSession('safe-profile', profileData); location.hash = '#login'; authPage(); } catch (error) { document.querySelector('#live-message').innerHTML = notice(error.message); event.currentTarget.disabled = false; } });
 }
 
 function notFound() { setView(`<section class="white-panel empty-state"><h1>ไม่พบหน้านี้</h1><a class="pill-button dark" href="#home">กลับหน้าแรก</a></section>`); }
-function route() { const [section, id] = location.hash.slice(1).split('/'); if (!section || section === 'home') home(); else if (section === 'catalog') catalog(); else if (section === 'book') detail(id); else if (section === 'cart') cartPage(); else if (section === 'checkout') checkout(id); else if (section === 'order') orderPage(id); else if (section === 'track') track(); else if (section === 'history') history(); else if (section === 'profile') profile(); else notFound(); }
+function route() { const [section, id] = location.hash.slice(1).split('/'); if (!section || section === 'home') home(); else if (section === 'catalog') catalog(); else if (section === 'book') detail(id); else if (section === 'cart') cartPage(); else if (section === 'checkout') checkout(id); else if (section === 'order') orderPage(id); else if (section === 'track') track(); else if (section === 'history') history(); else if (section === 'profile') profile(); else if (section === 'login' || section === 'register') authPage(section); else notFound(); }
 app.addEventListener('click', event => { const add = event.target.closest('[data-add]'); if (add) addToCart(add.dataset.add); });
-try { const data = await api('books'); books = data.books; cart = cart.filter(id => book(id)); selected = new Set(cart); refreshCartCount(); window.addEventListener('hashchange', route); route(); }
+try { const [catalog, session] = await Promise.all([api('books'), api('customer?view=session')]); books = catalog.books; customerUser = session.user; if (customerUser && profileData.email !== customerUser.email) profileData = { name: customerUser.name, email: customerUser.email }; cart = cart.filter(id => book(id)); selected = new Set(cart); refreshCartCount(); window.addEventListener('hashchange', route); if (/^#(access_token|error=|error_code=)/.test(location.hash)) { const failed = location.hash.startsWith('#error'); history.replaceState(null, '', '#login'); authPage('login', failed ? 'ยืนยันอีเมลไม่สำเร็จ กรุณาลองใหม่' : 'ยืนยันอีเมลแล้ว กรุณาเข้าสู่ระบบ'); } else route(); }
 catch (error) { app.innerHTML = `<section class="white-panel empty-state">${notice(error.message)}</section>`; }

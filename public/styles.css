@@ -223,6 +223,17 @@ input:not([type=checkbox]):focus{outline:3px solid #ffbaba;outline-offset:2px}
 .avatar-graphic:after{content:"";position:absolute;background:#fff;border-radius:50% 50% 0 0;width:85%;height:45%;bottom:-7%;left:7.5%}
 .profile-visual p{font-size:1.15rem;letter-spacing:.12em;font-weight:700}
 
+/* Customer sign-in and registration use the same profile composition as the supplied design. */
+.auth-card{min-height:680px}
+.auth-card form{max-width:760px}
+.auth-card form .pill-button{min-width:220px;margin-top:25px}
+.auth-tabs{display:flex;gap:10px;margin:24px 0 30px;max-width:600px}
+.auth-tabs a{flex:1;min-height:58px;border:2px solid #111;border-radius:100px;display:grid;place-items:center;font-size:1.05rem;font-weight:700;color:#111;background:#fff}
+.auth-tabs a.active{background:#111;color:#fff}
+.auth-note{margin-top:24px!important;font-size:.95rem}
+.auth-note a{text-decoration:underline;font-weight:700}
+input[readonly]{background:#f2f5f8!important;color:#454545!important}
+
 @media(max-width:1450px){
   .product-grid{grid-template-columns:repeat(2,minmax(0,410px))}
 }
@@ -261,7 +272,7 @@ input:not([type=checkbox]):focus{outline:3px solid #ffbaba;outline-offset:2px}
   .checkout-panel,.status-panel{border-radius:30px;padding:24px 20px}.checkout-title h2,.status-panel-head h2{font-size:1.45rem;word-break:break-word}.demo-note{display:block;padding:12px;font-size:.85rem}.demo-note strong{display:inline-block;margin-right:6px}
   .checkout-columns{display:block}.checkout-columns>div+div{margin-top:30px;border-top:1px solid #ccc;padding-top:25px}.checkout-cover,.status-cover{width:75px;height:85px;border-radius:13px}.checkout-cover .book-cover,.status-cover .book-cover{width:48px;height:68px;transform:none;box-shadow:2px 3px 5px rgba(0,0,0,.2)}
   .status-id{display:block;font-size:.86rem}.status-id strong{display:block}.status-id button{margin-top:5px}.status-facts{display:block}.status-facts>div+div{margin-top:10px}.payment-demo{display:block}.payment-actions{display:block}.payment-demo .pill-button{width:100%;margin-top:17px}
-  .profile-layout{display:block}.profile-card{min-height:0;padding:30px 22px}.profile-card h1{font-size:2rem}.profile-fields{display:block}.profile-visual{display:none}
+  .profile-layout{display:block}.profile-card{min-height:0;padding:30px 22px}.profile-card h1{font-size:2rem}.profile-fields{display:block}.profile-visual{display:none}.auth-tabs a{font-size:.9rem;min-height:48px}
   .mock-payment-panel{padding:24px 20px;border-radius:30px}.mock-payment-panel h2{font-size:1.7rem}.mock-methods button{font-size:.95rem;min-height:48px;padding:6px 14px}.mock-payment-grid{display:block;margin-top:30px}.mock-payment-grid h3{font-size:1.15rem}.mock-readonly{min-height:52px;font-size:.9rem}.mock-payment-explain{margin-top:25px;border-top:1px solid #ddd}.mock-payment-actions{display:grid;gap:8px}.mock-payment-actions .pill-button{min-width:0;min-height:55px;width:100%;font-size:1rem}
   .site-footer{display:block;text-align:center;font-size:.75rem}.site-footer span{display:block}
 }

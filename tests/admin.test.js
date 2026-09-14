@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import adminApi from '../api/admin.js';
+import { createOrder } from '../lib/store.js';
+import { randomBytes } from 'node:crypto';
 
 const password = 'admin-test-password-with-32-characters';
 const endpoint = 'https://shop.example.org/api/admin';
@@ -38,6 +40,12 @@ test('admin data and changes require a valid server-signed session', async () =>
     assert.ok(data.books.every(book => !('file' in book)));
     assert.ok(Array.isArray(data.orders));
     assert.equal((await adminApi.fetch(request('?view=overview', undefined, `${cookie}tampered`))).status, 401);
+
+    const id = `EB-${randomBytes(12).toString('hex').toUpperCase()}`;
+    await createOrder({ id, book_id: 'tarot-app', book_ids: ['tarot-app'], customer_name: 'ลูกค้า ทดสอบ', email: 'admin-flow@example.test', status: 'PENDING', email_status: 'NOT_SENT', created_at: new Date().toISOString() });
+    const marked = await adminApi.fetch(request('', { action: 'mark-paid', id }, cookie));
+    assert.equal(marked.status, 200);
+    assert.equal((await marked.json()).order.status, 'PAID');
 
     const logout = await adminApi.fetch(request('', { action: 'logout' }, cookie));
     assert.equal(logout.status, 200);

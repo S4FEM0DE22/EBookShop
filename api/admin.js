@@ -31,7 +31,7 @@ async function changeOrder(request, input) {
   if (input.action === 'retry-email' && order.status !== 'PAID') throw Object.assign(new Error('ส่งอีเมลได้หลังชำระเงินเท่านั้น'), { status: 409 });
   const handler = input.action === 'cancel-order' ? cancelApi : payApi;
   const response = await handler.fetch(new Request(new URL(input.action === 'cancel-order' ? '/api/cancel' : '/api/pay', request.url), {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: order.id, email: order.email })
+    method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: request.headers.get('cookie') || '' }, body: JSON.stringify({ id: order.id })
   }));
   return reply(await response.json(), response.status);
 }

@@ -1,16 +1,22 @@
 import { deliverEmail, downloadUrl } from '../lib/delivery.js';
-import { body, cleanEmail, fail, json, method, orderView, validateEmail } from '../lib/http.js';
+import { customer, sameOrigin } from '../lib/customer-auth.js';
+import { isAdmin } from '../lib/admin-auth.js';
+import { body, fail, json, method, orderView } from '../lib/http.js';
 import { getOrder, getOrderBooks, updateOrder } from '../lib/store.js';
 
 export default { async fetch(request) {
   try {
     method(request, 'POST');
+    sameOrigin(request);
+    const user = customer(request);
+    const admin = isAdmin(request);
+    if (!user && !admin) return json({ error: 'กรุณาเข้าสู่ระบบ' }, 401);
     const input = await body(request);
-    if (typeof input.id !== 'string' || !/^EB-[A-F0-9]{24}$/.test(input.id) || !validateEmail(input.email)) {
+    if (typeof input.id !== 'string' || !/^EB-[A-F0-9]{24}$/.test(input.id)) {
       return json({ error: 'ไม่พบคำสั่งซื้อนี้' }, 404);
     }
     let order = await getOrder(input.id);
-    if (!order || order.email !== cleanEmail(input.email)) return json({ error: 'ไม่พบคำสั่งซื้อนี้' }, 404);
+    if (!order || (!admin && order.email !== user.email)) return json({ error: 'ไม่พบคำสั่งซื้อนี้' }, 404);
     if (order.status === 'CANCELLED') return json({ error: 'คำสั่งซื้อนี้ถูกยกเลิกแล้ว' }, 409);
     const books = await getOrderBooks(order);
     const origin = process.env.PUBLIC_SITE_URL?.replace(/\/$/, '') || new URL(request.url).origin;
