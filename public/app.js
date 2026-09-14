@@ -126,6 +126,26 @@ function checkout(singleId = '') {
   });
 }
 
+function pendingPayment(order, items) {
+  setView(`${pageHead('การชำระสินค้า')}<section class="white-panel mock-payment-panel"><div class="kicker">PAYMENT / DEMO</div><h2>เลือกการชำระสินค้า</h2><div class="mock-methods" role="group" aria-label="ตัวเลือกการชำระเงินจำลอง"><button type="button" data-mock-method="card" aria-pressed="false">บัตรเครดิต</button><button type="button" data-mock-method="qr" class="active" aria-pressed="true">QR PromptPay</button></div><div class="mock-payment-grid"><div><h3>อีเมลสำหรับจัดส่งสินค้า</h3><div class="mock-readonly">${esc(order.email)}</div><h3>เลขคำสั่งซื้อ</h3><div class="mock-readonly order-number">${esc(order.id)}</div><p class="mock-payment-summary">${items.map(item => esc(item.title)).join(' · ')}<br><strong>ยอดรวมจำลอง ${money(order.price)}</strong></p></div><div class="mock-payment-explain"><span class="mock-symbol" aria-hidden="true">◎</span><h3>QR PromptPay (ตัวอย่าง)</h3><p id="mock-method-note">ไม่มี QR สำหรับรับเงินจริง กด “ยืนยันการชำระจำลอง” เพื่อทดสอบขั้นตอนถัดไป</p></div></div></section><div class="mock-payment-actions"><a class="pill-button light" href="#track">ชำระสินค้าในภายหลัง</a><button class="pill-button light" id="pay-button" type="button">ยืนยันการชำระจำลอง</button><button class="pill-button mock-cancel" id="cancel-button" type="button">ยกเลิกการชำระ</button></div><div id="live-message" class="mock-payment-message" aria-live="polite"></div>`, 'orders');
+  document.querySelectorAll('[data-mock-method]').forEach(button => button.addEventListener('click', () => {
+    document.querySelectorAll('[data-mock-method]').forEach(option => { const active = option === button; option.classList.toggle('active', active); option.setAttribute('aria-pressed', String(active)); });
+    const isCard = button.dataset.mockMethod === 'card';
+    document.querySelector('.mock-payment-explain h3').textContent = isCard ? 'บัตรเครดิต (ตัวอย่าง)' : 'QR PromptPay (ตัวอย่าง)';
+    document.querySelector('#mock-method-note').textContent = isCard ? 'ระบบนี้ไม่รับข้อมูลบัตรจริง กด “ยืนยันการชำระจำลอง” เพื่อทดสอบขั้นตอนถัดไป' : 'ไม่มี QR สำหรับรับเงินจริง กด “ยืนยันการชำระจำลอง” เพื่อทดสอบขั้นตอนถัดไป';
+  }));
+  document.querySelector('#pay-button').addEventListener('click', async event => {
+    const button = event.currentTarget; button.disabled = true; button.textContent = 'กำลังอัปเดต…';
+    try { const data = await api('pay', { id: order.id, email: customerEmail || order.email }); currentOrder = data.order; orderPage(order.id); }
+    catch (error) { document.querySelector('#live-message').innerHTML = notice(error.message); button.disabled = false; button.textContent = 'ยืนยันการชำระจำลอง'; }
+  });
+  document.querySelector('#cancel-button').addEventListener('click', async event => {
+    const button = event.currentTarget; button.disabled = true;
+    try { const data = await api('cancel', { id: order.id, email: customerEmail || order.email }); currentOrder = data.order; orderPage(order.id); }
+    catch (error) { document.querySelector('#live-message').innerHTML = notice(error.message); button.disabled = false; }
+  });
+}
+
 function orderPage(id) {
   if (!currentOrder || currentOrder.id !== id) return track(id);
   const order = currentOrder;
@@ -133,6 +153,7 @@ function orderPage(id) {
   const cancelled = order.status === 'CANCELLED';
   const status = statusInfo(order);
   const items = order.items?.length ? order.items : [book(order.bookId)].filter(Boolean);
+  if (!paid && !cancelled) return pendingPayment(order, items);
   const deliveryText = { SENT: 'ส่งอีเมลลิงก์ดาวน์โหลดแล้ว โปรดตรวจกล่องจดหมายและอีเมลขยะ', DEMO: 'โหมดทดสอบในเครื่อง: แสดงลิงก์ดาวน์โหลดแทนการส่งอีเมลจริง', FAILED: 'ส่งอีเมลไม่สำเร็จ ใช้ลิงก์ด้านล่างแทนได้', NOT_CONFIGURED: 'ยังไม่ได้ตั้งค่าอีเมล ใช้ลิงก์ด้านล่างแทนได้', NOT_SENT: 'ยังไม่ได้ส่งอีเมล ใช้ลิงก์ด้านล่างแทนได้' }[order.emailStatus];
   setView(`${orderTabs('track')}${pageHead(paid ? 'ชำระสินค้าเสร็จสิ้น' : cancelled ? 'ยกเลิกคำสั่งซื้อแล้ว' : 'รอชำระสินค้า')}
     <section class="white-panel status-panel"><div class="status-panel-head"><div><div class="kicker">ORDER STATUS</div><h2>คำสั่งซื้อ ${esc(order.id)}</h2></div><span class="status-pill ${status.className}">${status.short}</span></div>${demo}<div class="status-id"><span>เลขคำสั่งซื้อ</span><strong>${esc(order.id)}</strong><button class="small-action" type="button" id="copy-id">คัดลอก</button></div><div class="status-items"><h3>รายละเอียดสินค้า</h3>${items.map(item => `<div class="status-item"><div class="status-cover">${cover(item)}</div><div><strong>${esc(item.title)}</strong><p>${esc(item.subtitle)}</p><b>${money(item.price)}</b></div></div>`).join('')}</div><div class="status-facts"><div><span>ยอดรวมจำลอง</span><strong>${money(order.price)}</strong></div><div><span>อีเมลรับหนังสือ</span><strong>${esc(order.email)}</strong></div></div>${paid ? `<div class="delivery-panel"><h3>การส่งมอบ</h3><p>${esc(deliveryText || 'กำลังตรวจผลการส่งอีเมล')}</p>${items.map(item => order.downloadUrls?.[item.id] || (items.length === 1 ? order.downloadUrl : '') ? `<a href="${esc(order.downloadUrls?.[item.id] || order.downloadUrl)}" target="_blank" rel="noopener">ดาวน์โหลด ${esc(item.title)} ↗</a>` : '').join('')}${['FAILED', 'NOT_CONFIGURED', 'NOT_SENT'].includes(order.emailStatus) ? '<button class="pill-button outline" type="button" id="retry-email-button">ลองส่งอีเมลอีกครั้ง</button>' : ''}<small>ลิงก์ใช้ได้ 24 ชั่วโมง ควรเปิดในเบราว์เซอร์หรือแอปอีเมล</small></div>` : cancelled ? `<div class="cancelled-panel">คำสั่งซื้อนี้ถูกยกเลิกแล้ว ไม่มีการส่งลิงก์ดาวน์โหลด</div>` : `<div class="payment-demo"><div><h3>ชำระเงินจำลอง</h3><p>กดปุ่มเพื่อเปลี่ยนสถานะเป็น PAID และทดสอบการส่งมอบหนังสือ</p></div><div class="payment-actions"><button class="pill-button dark" type="button" id="pay-button">จำลองชำระเงินสำเร็จ</button><button class="pill-button danger-outline" type="button" id="cancel-button">ยกเลิกคำสั่งซื้อ</button></div></div>`}<div id="live-message" aria-live="polite"></div></section>`, 'orders');
