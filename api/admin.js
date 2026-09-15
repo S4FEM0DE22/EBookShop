@@ -70,7 +70,7 @@ async function changeOrder(request, input) {
   if (input.action === 'retry-email' && order.status !== 'PAID') throw Object.assign(new Error('ส่งอีเมลได้หลังชำระเงินเท่านั้น'), { status: 409 });
   const handler = input.action === 'cancel-order' ? cancelApi : payApi;
   const response = await handler.fetch(new Request(new URL(input.action === 'cancel-order' ? '/api/cancel' : '/api/pay', request.url), {
-    method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: request.headers.get('cookie') || '' }, body: JSON.stringify({ id: order.id })
+    method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: request.headers.get('cookie') || '' }, body: JSON.stringify({ id: order.id, forceEmail: true, action: input.action })
   }));
   return reply(await response.json(), response.status);
 }
@@ -263,28 +263,23 @@ export default { async fetch(request) {
             notice = 'ไฟล์ประเภทนี้ไม่รองรับการสร้างหน้าปกอัตโนมัติ ระบบจะใช้หน้าปกเริ่มต้น';
           }
         } else {
-          const currentMode = inferCoverMode(oldCover);
-          if (currentMode === 'auto_first_page') {
-            changes.cover = oldCover;
-          } else {
-            const fileToRead = existing.file;
-            const fileExt = path.extname(fileToRead || '').toLowerCase();
-            if (fileExt === '.pdf') {
-              const existingBuf = await getEbookBuffer(fileToRead);
-              const pageImg = existingBuf ? await extractPdfFirstPage(existingBuf) : null;
-              if (pageImg) {
-                const coverFileName = `${input.id}-${Date.now()}-auto.png`;
-                const res = await uploadCoverFile({ filename: coverFileName, buffer: pageImg, mimeType: 'image/png' });
-                changes.cover = res.path;
-                newCoverPath = res.path;
-              } else {
-                changes.cover = DEFAULT_COVER;
-                notice = 'ไม่สามารถดึงหน้าแรกของไฟล์ได้ ระบบจะใช้หน้าปกเริ่มต้น';
-              }
+          const fileToRead = existing.file;
+          const fileExt = path.extname(fileToRead || '').toLowerCase();
+          if (fileExt === '.pdf') {
+            const existingBuf = await getEbookBuffer(fileToRead);
+            const pageImg = existingBuf ? await extractPdfFirstPage(existingBuf) : null;
+            if (pageImg) {
+              const coverFileName = `${input.id}-${Date.now()}-auto.png`;
+              const res = await uploadCoverFile({ filename: coverFileName, buffer: pageImg, mimeType: 'image/png' });
+              changes.cover = res.path;
+              newCoverPath = res.path;
             } else {
               changes.cover = DEFAULT_COVER;
-              notice = 'ไฟล์ประเภทนี้ไม่รองรับการสร้างหน้าปกอัตโนมัติ ระบบจะใช้หน้าปกเริ่มต้น';
+              notice = 'ไม่สามารถดึงหน้าแรกของไฟล์ได้ ระบบจะใช้หน้าปกเริ่มต้น';
             }
+          } else {
+            changes.cover = DEFAULT_COVER;
+            notice = 'ไฟล์ประเภทนี้ไม่รองรับการสร้างหน้าปกอัตโนมัติ ระบบจะใช้หน้าปกเริ่มต้น';
           }
         }
       }

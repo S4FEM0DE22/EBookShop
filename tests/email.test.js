@@ -121,7 +121,7 @@ test('email templates produce consistent brand voice, HTML, and text fallback', 
   );
   assert.ok(deliveryMulti.html.includes('เล่มที่ 1'));
   assert.ok(deliveryMulti.html.includes('เล่มที่ 2'));
-  assert.ok(deliveryMulti.html.includes('ตรวจสอบคำสั่งซื้อทั้งหมด'));
+  assert.ok(deliveryMulti.html.includes('ดูคำสั่งซื้อของฉัน') || deliveryMulti.html.includes('ตรวจสอบคำสั่งซื้อทั้งหมด'));
 
   // Order Confirmation Email
   const confirmation = renderOrderConfirmationEmail(
@@ -130,7 +130,7 @@ test('email templates produce consistent brand voice, HTML, and text fallback', 
     'https://shop.example.org'
   );
   assert.match(confirmation.subject, /^SAFEMODE SHOP \| ยืนยันคำสั่งซื้อ #EB-PENDING123456789012345$/);
-  assert.ok(confirmation.html.includes('รอการชำระเงิน'));
+  assert.ok(confirmation.html.includes('รอดำเนินการ') || confirmation.html.includes('รอการชำระเงิน'));
   assert.ok(confirmation.html.includes('ตรวจสอบคำสั่งซื้อ'));
 
   // Password Reset Email

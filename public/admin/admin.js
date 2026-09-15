@@ -89,34 +89,16 @@ function openBookModal(mode = 'create', book = null) {
   const loadingText = isCreate ? 'กำลังเพิ่มหนังสือ...' : 'กำลังบันทึกข้อมูล...';
 
   const defaultCoverUrl = '/assets/covers/default-book-cover.svg';
-  let initialMode = 'auto_first_page';
-  let initialPreviewSrc = defaultCoverUrl;
-  let initialPreviewTitle = 'สร้างจากหน้าแรกอัตโนมัติ';
-  let initialPreviewDesc = 'ระบบจะสร้างรูปหน้าปกจากหน้าแรกของไฟล์ PDF โดยอัตโนมัติ';
 
-  if (!isCreate && book) {
-    if (book.coverMode) {
-      initialMode = book.coverMode;
-    } else if (book.cover === defaultCoverUrl) {
-      initialMode = 'default';
-    } else if (book.cover && book.cover.includes('-auto.')) {
-      initialMode = 'auto_first_page';
+  // Determine label for current cover in edit mode
+  let currentCoverBadge = 'หน้าปกเริ่มต้นของเว็บไซต์';
+  if (!isCreate && book?.cover) {
+    if (book.cover === defaultCoverUrl || book.cover.includes('default-book-cover')) {
+      currentCoverBadge = 'หน้าปกเริ่มต้นของเว็บไซต์';
+    } else if (book.cover.includes('-auto.')) {
+      currentCoverBadge = 'สร้างจากหน้าแรกอัตโนมัติ';
     } else {
-      initialMode = 'custom';
-    }
-
-    if (initialMode === 'default') {
-      initialPreviewSrc = defaultCoverUrl;
-      initialPreviewTitle = 'หน้าปกเริ่มต้นของเว็บไซต์';
-      initialPreviewDesc = 'ปกมาตรฐาน SAFEMODE SHOP';
-    } else if (initialMode === 'auto_first_page') {
-      initialPreviewSrc = book.cover || defaultCoverUrl;
-      initialPreviewTitle = 'หน้าแรกของไฟล์ E-Book';
-      initialPreviewDesc = 'หน้าปกอัตโนมัติจากไฟล์';
-    } else {
-      initialPreviewSrc = book.cover || defaultCoverUrl;
-      initialPreviewTitle = 'รูปหน้าปกปัจจุบัน';
-      initialPreviewDesc = 'หน้าปกที่กำหนดเอง';
+      currentCoverBadge = 'อัปโหลดหน้าปกเอง (เฉพาะเล่ม)';
     }
   }
 
@@ -133,28 +115,50 @@ function openBookModal(mode = 'create', book = null) {
             ไฟล์ปัจจุบัน: <strong>${escapeHtml(book.fileName || book.file)}</strong>
           </div>` : ''}
         <input name="file" id="book-file-input" type="file" class="field file-field" accept=".pdf,.epub,.docx,.zip,.mobi,.txt" ${isCreate ? 'required' : ''}>
-        <small class="field-hint">รองรับไฟล์ .pdf, .epub, .docx, .zip (สูงสุด 50MB)${!isCreate ? ' · เลือกไฟล์ใหม่หากต้องการเปลี่ยน' : ''}</small>
+        <small class="field-hint">รองรับไฟล์ .pdf, .epub, .docx, .zip (สูงสุด 50MB)${!isCreate ? ' · เลือกไฟล์ใหม่หากต้องการเปลี่ยนไฟล์ E-Book' : ''}</small>
       </label>
 
-      <div class="field-label-wrap">
-        <label>หน้าปกหนังสือ</label>
+      ${!isCreate ? `
+        <div class="current-cover-section">
+          <label>หน้าปกปัจจุบัน</label>
+          <div class="current-cover-card">
+            <img class="current-cover-thumb" src="${escapeHtml(book?.cover || defaultCoverUrl)}" alt="หน้าปกปัจจุบัน">
+            <div class="current-cover-info">
+              <strong>${escapeHtml(book?.title || 'หนังสือ')}</strong>
+              <span class="cover-badge">${escapeHtml(currentCoverBadge)}</span>
+            </div>
+          </div>
+        </div>
+      ` : ''}
+
+      <div class="field-label-wrap" style="margin-top: 14px;">
+        <label>${isCreate ? 'หน้าปกหนังสือ' : 'เปลี่ยนหน้าปก'}</label>
         <div class="cover-mode-group">
+          ${!isCreate ? `
+            <label class="cover-option-card">
+              <input type="radio" name="cover_mode" value="keep" checked>
+              <div class="cover-option-text">
+                <strong>คงหน้าปกปัจจุบัน</strong>
+                <small>ใช้หน้าปกเดิม ไม่เปลี่ยนแปลง</small>
+              </div>
+            </label>
+          ` : ''}
           <label class="cover-option-card">
-            <input type="radio" name="cover_mode" value="auto_first_page" ${initialMode === 'auto_first_page' ? 'checked' : ''}>
+            <input type="radio" name="cover_mode" value="auto_first_page" ${isCreate ? 'checked' : ''}>
             <div class="cover-option-text">
               <strong>ใช้หน้าแรกของไฟล์</strong>
               <small>สร้างหน้าปกจากไฟล์ E-Book อัตโนมัติ (เฉพาะ PDF)</small>
             </div>
           </label>
           <label class="cover-option-card">
-            <input type="radio" name="cover_mode" value="default" ${initialMode === 'default' ? 'checked' : ''}>
+            <input type="radio" name="cover_mode" value="default">
             <div class="cover-option-text">
               <strong>ใช้หน้าปกเริ่มต้นของเว็บไซต์</strong>
               <small>ใช้ปกมาตรฐานของ SAFEMODE SHOP</small>
             </div>
           </label>
           <label class="cover-option-card">
-            <input type="radio" name="cover_mode" value="custom" ${initialMode === 'custom' ? 'checked' : ''}>
+            <input type="radio" name="cover_mode" value="custom">
             <div class="cover-option-text">
               <strong>อัปโหลดหน้าปกเอง</strong>
               <small>รองรับ JPG, PNG หรือ WebP (สูงสุด 5MB)</small>
@@ -163,23 +167,23 @@ function openBookModal(mode = 'create', book = null) {
         </div>
       </div>
 
-      <div id="custom-cover-wrap" style="display: ${initialMode === 'custom' ? 'block' : 'none'}; margin-top: 10px;">
+      <div id="custom-cover-wrap" style="display: none; margin-top: 10px;">
         <label>
-          เลือกรูปหน้าปก ${isCreate ? '<span class="req">*</span>' : ''}
+          เลือกรูปหน้าปก <span class="req">*</span>
           <input name="cover_file" id="custom-cover-input" type="file" class="field file-field" accept=".jpg,.jpeg,.png,.webp">
-          <small class="field-hint">รองรับไฟล์ .jpg, .jpeg, .png, .webp (สูงสุด 5MB)${!isCreate ? ' · เลือกไฟล์ใหม่หากต้องการเปลี่ยนรูป' : ''}</small>
+          <small class="field-hint">รองรับไฟล์ .jpg, .jpeg, .png, .webp (สูงสุด 5MB)</small>
         </label>
       </div>
 
       <div class="cover-preview-wrapper" id="cover-preview-box">
-        <img class="cover-preview-img" id="cover-preview-img" src="${escapeHtml(initialPreviewSrc)}" alt="พรีวิวหน้าปก">
+        <img class="cover-preview-img" id="cover-preview-img" src="${escapeHtml(!isCreate && book?.cover ? book.cover : defaultCoverUrl)}" alt="พรีวิวหน้าปก">
         <div class="cover-preview-meta">
-          <strong id="cover-preview-title">${escapeHtml(initialPreviewTitle)}</strong>
-          <span id="cover-preview-desc">${escapeHtml(initialPreviewDesc)}</span>
+          <strong id="cover-preview-title">${isCreate ? 'สร้างจากหน้าแรกอัตโนมัติ' : 'พรีวิว: คงหน้าปกปัจจุบัน'}</strong>
+          <span id="cover-preview-desc">${isCreate ? 'ระบบจะสร้างรูปหน้าปกจากหน้าแรกของไฟล์ PDF โดยอัตโนมัติ' : 'ใช้รูปภาพหน้าปกเดิม ไม่มีการเปลี่ยนแปลง'}</span>
         </div>
       </div>
 
-      <label>
+      <label style="margin-top: 16px;">
         ชื่อหนังสือ <span class="req">*</span>
         <input name="title" class="field" required minlength="3" maxlength="140" value="${escapeHtml(book?.title || '')}" placeholder="ชื่อหนังสือ">
       </label>
@@ -211,6 +215,7 @@ function openBookModal(mode = 'create', book = null) {
   const form = dialog.querySelector('#book-form');
   const errorEl = dialog.querySelector('#book-form-error');
   const submitBtn = dialog.querySelector('#book-submit-btn');
+  const fileInput = dialog.querySelector('#book-file-input');
   const customWrap = dialog.querySelector('#custom-cover-wrap');
   const customInput = dialog.querySelector('#custom-cover-input');
   const previewImg = dialog.querySelector('#cover-preview-img');
@@ -220,68 +225,105 @@ function openBookModal(mode = 'create', book = null) {
   let chosenCustomUrl = null;
 
   function updateCoverView() {
-    const selectedMode = form.querySelector('input[name="cover_mode"]:checked')?.value || 'auto_first_page';
+    const selectedMode = form.querySelector('input[name="cover_mode"]:checked')?.value || (isCreate ? 'auto_first_page' : 'keep');
     customWrap.style.display = selectedMode === 'custom' ? 'block' : 'none';
 
-    if (selectedMode === 'default') {
+    if (selectedMode === 'keep') {
+      previewImg.src = book?.cover || defaultCoverUrl;
+      previewTitle.textContent = 'พรีวิว: คงหน้าปกปัจจุบัน';
+      previewDesc.textContent = 'ใช้รูปภาพหน้าปกเดิม ไม่มีการเปลี่ยนแปลง';
+    } else if (selectedMode === 'default') {
       previewImg.src = defaultCoverUrl;
-      previewTitle.textContent = 'หน้าปกเริ่มต้นของเว็บไซต์';
+      previewTitle.textContent = 'พรีวิว: หน้าปกเริ่มต้นของเว็บไซต์';
       previewDesc.textContent = 'ใช้รูปภาพมาตรฐานของ SAFEMODE SHOP';
     } else if (selectedMode === 'auto_first_page') {
-      if (!isCreate && book?.cover && initialMode === 'auto_first_page') {
-        previewImg.src = book.cover;
-        previewTitle.textContent = 'หน้าแรกของไฟล์ E-Book';
-        previewDesc.textContent = 'หน้าปกอัตโนมัติจากไฟล์ปัจจุบัน';
+      previewImg.src = defaultCoverUrl;
+      previewTitle.textContent = 'พรีวิว: สร้างจากหน้าแรกอัตโนมัติ';
+      const selectedPdf = fileInput?.files?.[0];
+      if (selectedPdf && selectedPdf.name.toLowerCase().endsWith('.pdf')) {
+        previewDesc.textContent = `ระบบจะดึงหน้าแรกของไฟล์ ${selectedPdf.name} มาเป็นหน้าปกเมื่อบันทึก`;
+      } else if (!isCreate && book?.fileName?.toLowerCase()?.endsWith('.pdf')) {
+        previewDesc.textContent = `ระบบจะดึงหน้าแรกของไฟล์ ${book.fileName} มาเป็นหน้าปกเมื่อบันทึก`;
       } else {
-        previewImg.src = defaultCoverUrl;
-        previewTitle.textContent = 'สร้างจากหน้าแรกอัตโนมัติ';
-        previewDesc.textContent = 'ระบบจะดึงหน้าแรกของไฟล์ PDF มาเป็นหน้าปกเมื่อบันทึก';
+        previewDesc.textContent = 'ระบบจะดึงหน้าแรกของไฟล์ PDF มาเป็นหน้าปกเมื่อบันทึก (เฉพาะ PDF)';
       }
     } else if (selectedMode === 'custom') {
       if (chosenCustomUrl) {
         previewImg.src = chosenCustomUrl;
-        previewTitle.textContent = 'รูปภาพที่เลือกใหม่';
+        previewTitle.textContent = 'พรีวิว: รูปภาพใหม่ที่เลือก';
         previewDesc.textContent = customInput.files[0]?.name || 'พร้อมบันทึกเป็นหน้าปก';
-      } else if (!isCreate && book?.cover && initialMode === 'custom') {
-        previewImg.src = book.cover;
-        previewTitle.textContent = 'รูปหน้าปกปัจจุบัน';
-        previewDesc.textContent = 'เลือกไฟล์ใหม่หากต้องการเปลี่ยนรูป';
       } else {
         previewImg.src = defaultCoverUrl;
-        previewTitle.textContent = 'ยังไม่ได้เลือกรูป';
-        previewDesc.textContent = 'กรุณาเลือกไฟล์รูปภาพ .jpg, .png หรือ .webp';
+        previewTitle.textContent = 'ยังไม่ได้เลือกรูปภาพ';
+        previewDesc.textContent = 'กรุณาเลือกไฟล์รูปภาพ .jpg, .png หรือ .webp (สูงสุด 5MB)';
       }
     }
   }
 
   form.querySelectorAll('input[name="cover_mode"]').forEach(radio => {
-    radio.addEventListener('change', updateCoverView);
+    radio.addEventListener('change', () => {
+      const selected = form.querySelector('input[name="cover_mode"]:checked')?.value;
+      if (selected !== 'custom') {
+        if (customInput) customInput.value = '';
+        if (chosenCustomUrl) {
+          URL.revokeObjectURL(chosenCustomUrl);
+          chosenCustomUrl = null;
+        }
+      }
+      errorEl.textContent = '';
+      updateCoverView();
+    });
   });
 
-  customInput.addEventListener('change', () => {
-    const file = customInput.files[0];
-    if (!file) return;
-    if (file.size > 5242880) {
-      errorEl.textContent = 'ไฟล์รูปหน้าปกมีขนาดใหญ่เกิน 5MB';
-      customInput.value = '';
-      return;
+  if (fileInput) {
+    fileInput.addEventListener('change', () => {
+      const selectedMode = form.querySelector('input[name="cover_mode"]:checked')?.value;
+      if (selectedMode === 'auto_first_page') updateCoverView();
+    });
+  }
+
+  if (customInput) {
+    customInput.addEventListener('change', () => {
+      const file = customInput.files[0];
+      if (!file) {
+        if (chosenCustomUrl) {
+          URL.revokeObjectURL(chosenCustomUrl);
+          chosenCustomUrl = null;
+        }
+        updateCoverView();
+        return;
+      }
+      if (file.size > 5242880) {
+        errorEl.textContent = 'ไฟล์รูปหน้าปกมีขนาดใหญ่เกิน 5MB';
+        customInput.value = '';
+        if (chosenCustomUrl) {
+          URL.revokeObjectURL(chosenCustomUrl);
+          chosenCustomUrl = null;
+        }
+        updateCoverView();
+        return;
+      }
+      errorEl.textContent = '';
+      if (chosenCustomUrl) URL.revokeObjectURL(chosenCustomUrl);
+      chosenCustomUrl = URL.createObjectURL(file);
+      updateCoverView();
+    });
+  }
+
+  dialog.addEventListener('close', () => {
+    if (chosenCustomUrl) {
+      URL.revokeObjectURL(chosenCustomUrl);
+      chosenCustomUrl = null;
     }
-    errorEl.textContent = '';
-    chosenCustomUrl = URL.createObjectURL(file);
-    updateCoverView();
   });
 
   form.addEventListener('submit', async event => {
     event.preventDefault();
     errorEl.textContent = '';
 
-    const selectedMode = form.querySelector('input[name="cover_mode"]:checked')?.value || 'auto_first_page';
+    const selectedMode = form.querySelector('input[name="cover_mode"]:checked')?.value || (isCreate ? 'auto_first_page' : 'keep');
     if (selectedMode === 'custom') {
-      if (isCreate && (!customInput.files || !customInput.files[0])) {
-        errorEl.textContent = 'กรุณาเลือกไฟล์รูปหน้าปก';
-        return;
-      }
-      if (!isCreate && initialMode !== 'custom' && (!customInput.files || !customInput.files[0])) {
+      if (!customInput.files || !customInput.files[0]) {
         errorEl.textContent = 'กรุณาเลือกไฟล์รูปหน้าปก';
         return;
       }
@@ -294,6 +336,22 @@ function openBookModal(mode = 'create', book = null) {
       const formData = new FormData(form);
       formData.append('action', isCreate ? 'add-book' : 'update-book');
       if (!isCreate) formData.append('id', book.id);
+
+      if (!isCreate) {
+        if (selectedMode === 'keep') {
+          formData.delete('cover_mode');
+          formData.delete('cover_file');
+        } else if (selectedMode === 'default' || selectedMode === 'auto_first_page') {
+          formData.set('cover_mode', selectedMode);
+          formData.delete('cover_file');
+        } else if (selectedMode === 'custom') {
+          formData.set('cover_mode', 'custom');
+        }
+      } else {
+        if (selectedMode !== 'custom') {
+          formData.delete('cover_file');
+        }
+      }
 
       const response = await fetch('/api/admin', {
         method: 'POST',
