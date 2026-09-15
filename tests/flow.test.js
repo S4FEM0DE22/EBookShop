@@ -213,3 +213,71 @@ test('customer profile update saves name fields and updates session', async () =
   assert.equal(user2.lastName, 'ศุภมาตร์');
   assert.equal(user2.name, 'นพนันท์ ศุภมาตร์');
 });
+
+test('customer registration with first and last name populates profile and session', async () => {
+  const email = `reg-test-${randomUUID()}@example.com`;
+  const username = `reg_${randomUUID().slice(0, 8)}`;
+  const password = 'local-test-password-123';
+  const res = await customerApi.fetch(request('customer', {
+    action: 'register',
+    username,
+    email,
+    password,
+    first: 'สมชาย',
+    last: 'ใจดี'
+  }));
+  assert.equal(res.status, 201);
+  const data = await res.json();
+  assert.equal(data.user.firstName, 'สมชาย');
+  assert.equal(data.user.lastName, 'ใจดี');
+  assert.equal(data.user.name, 'สมชาย ใจดี');
+  assert.equal(data.user.username, username);
+  assert.equal(data.user.email, email);
+
+  const cookie = res.headers.get('set-cookie')?.split(';')[0];
+  assert.ok(cookie);
+  const sessionRes = await customerApi.fetch(request('customer?view=session', undefined, cookie));
+  const sessionUser = (await sessionRes.json()).user;
+  assert.equal(sessionUser.firstName, 'สมชาย');
+  assert.equal(sessionUser.lastName, 'ใจดี');
+  assert.equal(sessionUser.name, 'สมชาย ใจดี');
+});
+
+test('order snapshot customer_name and email remain immutable after profile updates', async () => {
+  const buyer = await account('immut');
+  // 1. Initial profile update
+  const updateRes1 = await customerApi.fetch(request('customer', {
+    action: 'update-profile',
+    first: 'นพดล',
+    last: 'ทองคำ'
+  }, buyer.cookie));
+  const cookie1 = updateRes1.headers.get('set-cookie')?.split(';')[0];
+
+  // 2. Create order with current name
+  const orderRes = await ordersApi.fetch(request('orders', {
+    bookId: 'media-player-pro',
+    name: 'นพดล ทองคำ'
+  }, cookie1));
+  assert.equal(orderRes.status, 201);
+  const order = (await orderRes.json()).order;
+  assert.equal(order.customerName, 'นพดล ทองคำ');
+  assert.equal(order.email, buyer.email);
+
+  // 3. Buyer updates profile to a completely different name
+  const updateRes2 = await customerApi.fetch(request('customer', {
+    action: 'update-profile',
+    first: 'วิชัย',
+    last: 'เจริญกุล'
+  }, cookie1));
+  const cookie2 = updateRes2.headers.get('set-cookie')?.split(';')[0];
+  const user2 = (await updateRes2.json()).user;
+  assert.equal(user2.name, 'วิชัย เจริญกุล');
+
+  // 4. Verify original order snapshot is still 'นพดล ทองคำ'
+  const lookedUp = await orderApi.fetch(request('order', { id: order.id }, cookie2));
+  assert.equal(lookedUp.status, 200);
+  const lookedUpOrder = (await lookedUp.json()).order;
+  assert.equal(lookedUpOrder.customerName, 'นพดล ทองคำ');
+  assert.equal(lookedUpOrder.email, buyer.email);
+});
+

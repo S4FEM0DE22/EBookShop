@@ -1,4 +1,4 @@
-import { claimUsername, clearSessionCookie, customer, forgotPassword, login, register, resetPassword, sameOrigin, sessionCookie, updateCustomerProfile } from '../lib/customer-auth.js';
+import { claimUsername, clearSessionCookie, customer, forgotPassword, login, normalizeUserNames, register, resetPassword, sameOrigin, sessionCookie, updateCustomerProfile } from '../lib/customer-auth.js';
 import { body, cleanEmail, fail, json, orderView, validateEmail } from '../lib/http.js';
 import { listCustomerOrders, listAllBooks } from '../lib/store.js';
 
@@ -8,19 +8,13 @@ function reply(data, status = 200, cookie) {
   return Response.json(data, { status, headers });
 }
 function publicUser(user) {
-  let firstName = user.firstName || user.first_name || '';
-  let lastName = user.lastName || user.last_name || '';
-  if (!firstName && !lastName && user.name && user.name !== user.username) {
-    const parts = user.name.trim().split(/\s+/);
-    firstName = parts[0] || '';
-    lastName = parts.slice(1).join(' ') || '';
-  }
+  const names = normalizeUserNames(user);
   return {
-    name: user.name,
-    firstName,
-    lastName,
-    first_name: firstName,
-    last_name: lastName,
+    name: names.name,
+    firstName: names.firstName,
+    lastName: names.lastName,
+    first_name: names.firstName,
+    last_name: names.lastName,
     email: user.email,
     username: user.username || null
   };
@@ -97,7 +91,10 @@ export default { async fetch(request) {
       const username = typeof input.username === 'string' ? input.username.trim().toLowerCase() : '';
       if (!validUsername(username) || !email) return json({ error: 'กรุณาตรวจ Username และอีเมล (Username ใช้ a-z, 0-9 หรือ _ จำนวน 3–24 ตัว)' }, 400);
       if (input.confirmPassword != null && input.confirmPassword !== password) return json({ error: 'รหัสผ่านทั้งสองช่องไม่ตรงกัน' }, 400);
-      const result = await register(username, email, password);
+      const first = typeof input.first === 'string' ? input.first.trim() : (typeof input.firstName === 'string' ? input.firstName.trim() : '');
+      const last = typeof input.last === 'string' ? input.last.trim() : (typeof input.lastName === 'string' ? input.lastName.trim() : '');
+      if (first.length > 80 || last.length > 80) return json({ error: 'ชื่อหรือนามสกุลยาวเกินไป (ไม่เกิน 80 ตัวอักษร)' }, 400);
+      const result = await register(username, email, password, first, last);
       if (result.confirmationRequired) return reply({ user: null, confirmationRequired: true }, 201);
       return reply({ user: publicUser(result.user), confirmationRequired: false }, 201, sessionCookie(request, result.user));
     }
