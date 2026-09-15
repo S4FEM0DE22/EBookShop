@@ -27,7 +27,7 @@ function toast(message, bad = false) {
 }
 
 function renderLogin(configured = true) {
-  app.innerHTML = `<div class="admin-auth-layout"><div class="admin-auth-side"><a class="brand" href="/" aria-label="SAFE MODE SHOP หน้าร้าน"><img src="/assets/safe-mode-shop-white.png" alt="SAFE MODE SHOP"></a><div class="admin-auth-hero"><span class="eyebrow">ADMIN WORKSPACE</span><h1>ระบบผู้ดูแลร้าน</h1><p>จัดการหนังสือ คำสั่งซื้อ และข้อมูลร้านจากพื้นที่เดียว</p></div><a href="/" class="pill-button outline">กลับหน้าร้าน</a></div><div class="admin-auth-main"><form class="login-card" id="login-form"><h2>เข้าสู่ระบบ</h2><p class="muted">กรุณากรอกรหัสผ่านเพื่อเข้าใช้งาน</p><label for="password">รหัสผ่านผู้ดูแล</label><input class="field" id="password" type="password" autocomplete="current-password" required autofocus placeholder="กรอกรหัสผ่าน"><button class="primary" type="submit">เข้าสู่หลังบ้าน</button><div class="error" id="login-error" role="alert">${configured ? '' : 'ยังไม่ได้ตั้งค่ารหัสผู้ดูแลบนเซิร์ฟเวอร์'}</div></form></div></div>`;
+  app.innerHTML = `<div class="admin-auth-layout"><div class="admin-auth-side"><a class="brand" href="/" aria-label="SAFE MODE SHOP หน้าร้าน"><img src="/assets/safe-mode-shop-white.png" alt="SAFE MODE SHOP"></a><div class="admin-auth-hero"><span class="eyebrow">ADMIN WORKSPACE</span><h1>ระบบผู้ดูแลร้าน</h1><p>จัดการหนังสือ คำสั่งซื้อ และข้อมูลร้านจากพื้นที่เดียว</p></div><a href="/" class="pill-button outline">กลับหน้าร้าน</a></div><div class="admin-auth-main"><form class="login-card" id="login-form"><h2>เข้าสู่ระบบ</h2><p class="muted">กรุณากรอกรหัสผ่านเพื่อเข้าใช้งาน</p><label for="password">รหัสผ่านผู้ดูแล</label><input class="field" id="password" type="password" autocomplete="current-password" required autofocus placeholder="Password"><button class="primary" type="submit">เข้าสู่หลังบ้าน</button><div class="error" id="login-error" role="alert">${configured ? '' : 'ยังไม่ได้ตั้งค่ารหัสผู้ดูแลบนเซิร์ฟเวอร์'}</div></form></div></div>`;
   document.querySelector('#login-form').addEventListener('submit', async event => {
     event.preventDefault();
     const button = event.currentTarget.querySelector('button');
@@ -88,6 +88,38 @@ function openBookModal(mode = 'create', book = null) {
   const submitText = isCreate ? 'เพิ่มหนังสือ' : 'บันทึกหนังสือ';
   const loadingText = isCreate ? 'กำลังเพิ่มหนังสือ...' : 'กำลังบันทึกข้อมูล...';
 
+  const defaultCoverUrl = '/assets/covers/default-book-cover.svg';
+  let initialMode = 'auto_first_page';
+  let initialPreviewSrc = defaultCoverUrl;
+  let initialPreviewTitle = 'สร้างจากหน้าแรกอัตโนมัติ';
+  let initialPreviewDesc = 'ระบบจะสร้างรูปหน้าปกจากหน้าแรกของไฟล์ PDF โดยอัตโนมัติ';
+
+  if (!isCreate && book) {
+    if (book.coverMode) {
+      initialMode = book.coverMode;
+    } else if (book.cover === defaultCoverUrl) {
+      initialMode = 'default';
+    } else if (book.cover && book.cover.includes('-auto.')) {
+      initialMode = 'auto_first_page';
+    } else {
+      initialMode = 'custom';
+    }
+
+    if (initialMode === 'default') {
+      initialPreviewSrc = defaultCoverUrl;
+      initialPreviewTitle = 'หน้าปกเริ่มต้นของเว็บไซต์';
+      initialPreviewDesc = 'ปกมาตรฐาน SAFEMODE SHOP';
+    } else if (initialMode === 'auto_first_page') {
+      initialPreviewSrc = book.cover || defaultCoverUrl;
+      initialPreviewTitle = 'หน้าแรกของไฟล์ E-Book';
+      initialPreviewDesc = 'หน้าปกอัตโนมัติจากไฟล์';
+    } else {
+      initialPreviewSrc = book.cover || defaultCoverUrl;
+      initialPreviewTitle = 'รูปหน้าปกปัจจุบัน';
+      initialPreviewDesc = 'หน้าปกที่กำหนดเอง';
+    }
+  }
+
   const html = `
     <div class="dialog-head">
       <h2>${title}</h2>
@@ -100,28 +132,72 @@ function openBookModal(mode = 'create', book = null) {
           <div class="current-file-box">
             ไฟล์ปัจจุบัน: <strong>${escapeHtml(book.fileName || book.file)}</strong>
           </div>` : ''}
-        <input name="file" type="file" class="field file-field" accept=".pdf,.epub,.docx,.zip,.mobi,.txt" ${isCreate ? 'required' : ''}>
+        <input name="file" id="book-file-input" type="file" class="field file-field" accept=".pdf,.epub,.docx,.zip,.mobi,.txt" ${isCreate ? 'required' : ''}>
         <small class="field-hint">รองรับไฟล์ .pdf, .epub, .docx, .zip (สูงสุด 50MB)${!isCreate ? ' · เลือกไฟล์ใหม่หากต้องการเปลี่ยน' : ''}</small>
       </label>
+
+      <div class="field-label-wrap">
+        <label>หน้าปกหนังสือ</label>
+        <div class="cover-mode-group">
+          <label class="cover-option-card">
+            <input type="radio" name="cover_mode" value="auto_first_page" ${initialMode === 'auto_first_page' ? 'checked' : ''}>
+            <div class="cover-option-text">
+              <strong>ใช้หน้าแรกของไฟล์</strong>
+              <small>สร้างหน้าปกจากไฟล์ E-Book อัตโนมัติ (เฉพาะ PDF)</small>
+            </div>
+          </label>
+          <label class="cover-option-card">
+            <input type="radio" name="cover_mode" value="default" ${initialMode === 'default' ? 'checked' : ''}>
+            <div class="cover-option-text">
+              <strong>ใช้หน้าปกเริ่มต้นของเว็บไซต์</strong>
+              <small>ใช้ปกมาตรฐานของ SAFEMODE SHOP</small>
+            </div>
+          </label>
+          <label class="cover-option-card">
+            <input type="radio" name="cover_mode" value="custom" ${initialMode === 'custom' ? 'checked' : ''}>
+            <div class="cover-option-text">
+              <strong>อัปโหลดหน้าปกเอง</strong>
+              <small>รองรับ JPG, PNG หรือ WebP (สูงสุด 5MB)</small>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <div id="custom-cover-wrap" style="display: ${initialMode === 'custom' ? 'block' : 'none'}; margin-top: 10px;">
+        <label>
+          เลือกรูปหน้าปก ${isCreate ? '<span class="req">*</span>' : ''}
+          <input name="cover_file" id="custom-cover-input" type="file" class="field file-field" accept=".jpg,.jpeg,.png,.webp">
+          <small class="field-hint">รองรับไฟล์ .jpg, .jpeg, .png, .webp (สูงสุด 5MB)${!isCreate ? ' · เลือกไฟล์ใหม่หากต้องการเปลี่ยนรูป' : ''}</small>
+        </label>
+      </div>
+
+      <div class="cover-preview-wrapper" id="cover-preview-box">
+        <img class="cover-preview-img" id="cover-preview-img" src="${escapeHtml(initialPreviewSrc)}" alt="พรีวิวหน้าปก">
+        <div class="cover-preview-meta">
+          <strong id="cover-preview-title">${escapeHtml(initialPreviewTitle)}</strong>
+          <span id="cover-preview-desc">${escapeHtml(initialPreviewDesc)}</span>
+        </div>
+      </div>
+
       <label>
         ชื่อหนังสือ <span class="req">*</span>
         <input name="title" class="field" required minlength="3" maxlength="140" value="${escapeHtml(book?.title || '')}" placeholder="ชื่อหนังสือ">
       </label>
       <label>
         คำอธิบายสั้น <span class="req">*</span>
-        <input name="subtitle" class="field" required minlength="3" maxlength="180" value="${escapeHtml(book?.subtitle || '')}" placeholder="คำอธิบายสั้น เช่น ใบงานที่ 1 · คู่มือใช้งาน">
+        <input name="subtitle" class="field" required minlength="3" maxlength="180" value="${escapeHtml(book?.subtitle || '')}" placeholder="คำอธิบายสั้น">
       </label>
       <label>
         รายละเอียด <span class="req">*</span>
-        <textarea name="description" class="field textarea-field" required minlength="10" maxlength="1000" placeholder="รายละเอียดเนื้อหาในเล่ม...">${escapeHtml(book?.description || '')}</textarea>
+        <textarea name="description" class="field textarea-field" required minlength="10" maxlength="1000" placeholder="รายละเอียด">${escapeHtml(book?.description || '')}</textarea>
       </label>
       <label>
         ผู้จัดทำ <span class="req">*</span>
-        <input name="author" class="field" required minlength="2" maxlength="100" value="${escapeHtml(book?.author || 'นพนันท์ ศุภมาตร์')}" placeholder="ชื่อผู้จัดทำ">
+        <input name="author" class="field" required minlength="2" maxlength="100" value="${escapeHtml(book?.author || 'นพนันท์ ศุภมาตร์')}" placeholder="ผู้จัดทำ">
       </label>
       <label>
         ราคาจำลอง (บาท) <span class="req">*</span>
-        <input name="price" class="field" type="number" required min="1" max="100000" value="${book ? book.price : 99}" placeholder="เช่น 99">
+        <input name="price" class="field" type="number" required min="1" max="100000" value="${book ? book.price : 99}" placeholder="ราคา">
       </label>
       <div id="book-form-error" class="error" role="alert"></div>
       <div class="dialog-actions">
@@ -135,10 +211,82 @@ function openBookModal(mode = 'create', book = null) {
   const form = dialog.querySelector('#book-form');
   const errorEl = dialog.querySelector('#book-form-error');
   const submitBtn = dialog.querySelector('#book-submit-btn');
+  const customWrap = dialog.querySelector('#custom-cover-wrap');
+  const customInput = dialog.querySelector('#custom-cover-input');
+  const previewImg = dialog.querySelector('#cover-preview-img');
+  const previewTitle = dialog.querySelector('#cover-preview-title');
+  const previewDesc = dialog.querySelector('#cover-preview-desc');
+
+  let chosenCustomUrl = null;
+
+  function updateCoverView() {
+    const selectedMode = form.querySelector('input[name="cover_mode"]:checked')?.value || 'auto_first_page';
+    customWrap.style.display = selectedMode === 'custom' ? 'block' : 'none';
+
+    if (selectedMode === 'default') {
+      previewImg.src = defaultCoverUrl;
+      previewTitle.textContent = 'หน้าปกเริ่มต้นของเว็บไซต์';
+      previewDesc.textContent = 'ใช้รูปภาพมาตรฐานของ SAFEMODE SHOP';
+    } else if (selectedMode === 'auto_first_page') {
+      if (!isCreate && book?.cover && initialMode === 'auto_first_page') {
+        previewImg.src = book.cover;
+        previewTitle.textContent = 'หน้าแรกของไฟล์ E-Book';
+        previewDesc.textContent = 'หน้าปกอัตโนมัติจากไฟล์ปัจจุบัน';
+      } else {
+        previewImg.src = defaultCoverUrl;
+        previewTitle.textContent = 'สร้างจากหน้าแรกอัตโนมัติ';
+        previewDesc.textContent = 'ระบบจะดึงหน้าแรกของไฟล์ PDF มาเป็นหน้าปกเมื่อบันทึก';
+      }
+    } else if (selectedMode === 'custom') {
+      if (chosenCustomUrl) {
+        previewImg.src = chosenCustomUrl;
+        previewTitle.textContent = 'รูปภาพที่เลือกใหม่';
+        previewDesc.textContent = customInput.files[0]?.name || 'พร้อมบันทึกเป็นหน้าปก';
+      } else if (!isCreate && book?.cover && initialMode === 'custom') {
+        previewImg.src = book.cover;
+        previewTitle.textContent = 'รูปหน้าปกปัจจุบัน';
+        previewDesc.textContent = 'เลือกไฟล์ใหม่หากต้องการเปลี่ยนรูป';
+      } else {
+        previewImg.src = defaultCoverUrl;
+        previewTitle.textContent = 'ยังไม่ได้เลือกรูป';
+        previewDesc.textContent = 'กรุณาเลือกไฟล์รูปภาพ .jpg, .png หรือ .webp';
+      }
+    }
+  }
+
+  form.querySelectorAll('input[name="cover_mode"]').forEach(radio => {
+    radio.addEventListener('change', updateCoverView);
+  });
+
+  customInput.addEventListener('change', () => {
+    const file = customInput.files[0];
+    if (!file) return;
+    if (file.size > 5242880) {
+      errorEl.textContent = 'ไฟล์รูปหน้าปกมีขนาดใหญ่เกิน 5MB';
+      customInput.value = '';
+      return;
+    }
+    errorEl.textContent = '';
+    chosenCustomUrl = URL.createObjectURL(file);
+    updateCoverView();
+  });
 
   form.addEventListener('submit', async event => {
     event.preventDefault();
     errorEl.textContent = '';
+
+    const selectedMode = form.querySelector('input[name="cover_mode"]:checked')?.value || 'auto_first_page';
+    if (selectedMode === 'custom') {
+      if (isCreate && (!customInput.files || !customInput.files[0])) {
+        errorEl.textContent = 'กรุณาเลือกไฟล์รูปหน้าปก';
+        return;
+      }
+      if (!isCreate && initialMode !== 'custom' && (!customInput.files || !customInput.files[0])) {
+        errorEl.textContent = 'กรุณาเลือกไฟล์รูปหน้าปก';
+        return;
+      }
+    }
+
     submitBtn.disabled = true;
     submitBtn.textContent = loadingText;
 
@@ -160,7 +308,11 @@ function openBookModal(mode = 'create', book = null) {
 
       dialog.close();
       await load();
-      toast(isCreate ? 'เพิ่มหนังสือเรียบร้อยแล้ว' : 'บันทึกข้อมูลหนังสือแล้ว');
+      if (result.notice) {
+        toast(result.notice);
+      } else {
+        toast(isCreate ? 'เพิ่มหนังสือเรียบร้อยแล้ว' : 'บันทึกข้อมูลหนังสือแล้ว');
+      }
     } catch (error) {
       errorEl.textContent = error.message;
       toast(error.message, true);
@@ -172,7 +324,7 @@ function openBookModal(mode = 'create', book = null) {
 
 function render() {
   const title = { overview: 'ภาพรวมร้าน', orders: 'คำสั่งซื้อ', books: 'หนังสือ', customers: 'ลูกค้า' }[view];
-  app.innerHTML = `<div class="admin-workspace"><aside class="admin-sidebar"><div class="admin-brand"><a class="brand" href="/" aria-label="SAFE MODE SHOP หน้าร้าน"><img src="/assets/brand/safemode-shop-dark.png" alt="SAFE MODE SHOP"></a><span class="admin-label">ADMIN PANEL</span></div><nav class="admin-nav" aria-label="เมนูผู้ดูแล"><div class="nav-group"><button data-view="overview" class="${view === 'overview' ? 'active' : ''}">ภาพรวม</button><button data-view="orders" class="${view === 'orders' ? 'active' : ''}">คำสั่งซื้อ</button><button data-view="books" class="${view === 'books' ? 'active' : ''}">หนังสือ</button><button data-view="customers" class="${view === 'customers' ? 'active' : ''}">ลูกค้า</button></div><div class="nav-bottom"><a href="/">กลับหน้าร้าน</a><button class="nav-exit" data-action="logout">ออกจากระบบ</button></div></nav></aside><main class="admin-main"><header class="admin-topbar"><div class="page-heading"><h1>${title}</h1></div><div class="content-actions"><span class="demo-badge">DEMO ONLY</span><button class="mini" data-action="refresh">รีเฟรช</button></div></header><div class="admin-content">${view === 'overview' ? `${metrics()}<section class="panel"><div class="panel-head"><div><h2>คำสั่งซื้อล่าสุด</h2><p>5 รายการล่าสุด</p></div><button class="mini" data-view="orders">ดูทั้งหมด →</button></div>${orderTable(5)}</section>` : view === 'orders' ? `<section class="panel"><div class="panel-head"><div><h2>ติดตามคำสั่งซื้อ</h2><p>แสดงสูงสุด 100 รายการล่าสุด</p></div><div class="order-filters"><select class="field" id="status-filter" aria-label="กรองสถานะ"><option value="ALL" ${statusFilter === 'ALL' ? 'selected' : ''}>ทุกสถานะ</option><option value="PENDING" ${statusFilter === 'PENDING' ? 'selected' : ''}>รอชำระ</option><option value="PAID" ${statusFilter === 'PAID' ? 'selected' : ''}>ชำระแล้ว</option><option value="CANCELLED" ${statusFilter === 'CANCELLED' ? 'selected' : ''}>ยกเลิกแล้ว</option></select><input class="field search" id="order-search" type="search" placeholder="ค้นหาเลขคำสั่งซื้อ ชื่อ หรืออีเมล" value="${escapeHtml(query)}" aria-label="ค้นหาคำสั่งซื้อ"></div></div><div id="order-results">${orderTable(100)}</div></section>` : view === 'books' ? booksPanel() : customersPanel()}</div></main></div>`;
+  app.innerHTML = `<div class="admin-workspace"><aside class="admin-sidebar"><div class="admin-brand"><a class="brand" href="/" aria-label="SAFE MODE SHOP หน้าร้าน"><img src="/assets/brand/safemode-shop-dark.png" alt="SAFE MODE SHOP"></a><span class="admin-label">ADMIN PANEL</span></div><nav class="admin-nav" aria-label="เมนูผู้ดูแล"><div class="nav-group"><button data-view="overview" class="${view === 'overview' ? 'active' : ''}">ภาพรวม</button><button data-view="orders" class="${view === 'orders' ? 'active' : ''}">คำสั่งซื้อ</button><button data-view="books" class="${view === 'books' ? 'active' : ''}">หนังสือ</button><button data-view="customers" class="${view === 'customers' ? 'active' : ''}">ลูกค้า</button></div><div class="nav-bottom"><a href="/">กลับหน้าร้าน</a><button class="nav-exit" data-action="logout">ออกจากระบบ</button></div></nav></aside><main class="admin-main"><header class="admin-topbar"><div class="page-heading"><h1>${title}</h1></div><div class="content-actions"><span class="demo-badge">DEMO ONLY</span><button class="mini" data-action="refresh">รีเฟรช</button></div></header><div class="admin-content">${view === 'overview' ? `${metrics()}<section class="panel"><div class="panel-head"><div><h2>คำสั่งซื้อล่าสุด</h2><p>5 รายการล่าสุด</p></div><button class="mini" data-view="orders">ดูทั้งหมด →</button></div>${orderTable(5)}</section>` : view === 'orders' ? `<section class="panel"><div class="panel-head"><div><h2>ติดตามคำสั่งซื้อ</h2><p>แสดงสูงสุด 100 รายการล่าสุด</p></div><div class="order-filters"><select class="field" id="status-filter" aria-label="กรองสถานะ"><option value="ALL" ${statusFilter === 'ALL' ? 'selected' : ''}>ทุกสถานะ</option><option value="PENDING" ${statusFilter === 'PENDING' ? 'selected' : ''}>รอชำระ</option><option value="PAID" ${statusFilter === 'PAID' ? 'selected' : ''}>ชำระแล้ว</option><option value="CANCELLED" ${statusFilter === 'CANCELLED' ? 'selected' : ''}>ยกเลิกแล้ว</option></select><input class="field search" id="order-search" type="search" placeholder="ค้นหา" value="${escapeHtml(query)}" aria-label="ค้นหาคำสั่งซื้อ"></div></div><div id="order-results">${orderTable(100)}</div></section>` : view === 'books' ? booksPanel() : customersPanel()}</div></main></div>`;
   let searchTimeout;
   document.querySelector('#order-search')?.addEventListener('input', event => {
     clearTimeout(searchTimeout);

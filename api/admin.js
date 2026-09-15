@@ -4,12 +4,25 @@ import { adminConfigured, clearSessionCookie, correctPassword, isAdmin, sessionC
 import { listCustomerProfiles } from '../lib/customer-auth.js';
 import { emailConfigured } from '../lib/delivery.js';
 import { body, fail, json, orderView } from '../lib/http.js';
-import { createBook, deleteBook, deleteEbookFile, getBook, getOrder, listAllBooks, listOrders, setBookActive, updateBookDetails, uploadEbookFile } from '../lib/store.js';
+import { DEFAULT_COVER, extractPdfFirstPage, inferCoverMode, validateCustomCoverFile } from '../lib/cover.js';
+import { createBook, deleteBook, deleteCoverFile, deleteEbookFile, getBook, getEbookBuffer, getOrder, listAllBooks, listOrders, setBookActive, updateBookDetails, uploadCoverFile, uploadEbookFile } from '../lib/store.js';
 import payApi from './pay.js';
 import cancelApi from './cancel.js';
 
 const defaultBookFiles = new Set(['media-player-pro.pdf', 'sqlite-task-manager-guide.pdf', 'sqlite-task-manager-report.pdf', 'tarot-app.pdf']);
+const defaultCovers = new Set([
+  DEFAULT_COVER,
+  '/assets/covers/media-player-pro.jpg',
+  '/assets/covers/sqlite-task-manager-guide.jpg',
+  '/assets/covers/sqlite-task-manager-report.jpg',
+  '/assets/covers/tarot-app.jpg'
+]);
 const allowedExts = new Set(['.pdf', '.epub', '.docx', '.zip', '.mobi', '.txt']);
+
+function isDefaultCover(cover) {
+  if (!cover || typeof cover !== 'string') return true;
+  return defaultCovers.has(cover) || (cover.startsWith('/assets/covers/') && !cover.startsWith('/assets/covers/uploads/'));
+}
 
 function reply(data, status = 200, cookie) {
   const headers = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' };
@@ -72,7 +85,7 @@ export default { async fetch(request) {
       const [books, orders, customers] = await Promise.all([listAllBooks(), listOrders(), listCustomerProfiles()]);
       const bookMap = new Map(books.map(book => [book.id, book]));
       return json({
-        books: books.map(({ file, ...book }) => ({ ...book, fileName: file })),
+        books: books.map(({ file, ...book }) => ({ ...book, fileName: file, coverMode: inferCoverMode(book.cover) })),
         orders: orders.map(order => orderView(order, (Array.isArray(order.book_ids) && order.book_ids.length ? order.book_ids : [order.book_id]).map(id => bookMap.get(id)).filter(Boolean))),
         customers: customers.map(item => ({ username: item.username, email: item.email, createdAt: item.created_at })),
         emailConfigured: emailConfigured()
@@ -115,21 +128,72 @@ export default { async fetch(request) {
       const buffer = Buffer.from(await input.file.arrayBuffer());
       await uploadEbookFile({ filename: safeFileName, buffer, mimeType: input.file.type });
 
-      const cover = typeof input.cover === 'string' && input.cover.trim() ? input.cover.trim() : '/assets/covers/default-book-cover.svg';
+      let cover = DEFAULT_COVER;
+      const coverMode = typeof input.cover_mode === 'string' && input.cover_mode.trim() ? input.cover_mode.trim() : 'auto_first_page';
+      let notice = null;
+      let createdCoverFile = null;
 
-      const newBook = await createBook({
-        id: slug,
-        title,
-        subtitle,
-        description,
-        author,
-        price,
-        cover,
-        file: safeFileName,
-        active: true
+      if (coverMode === 'custom') {
+        try {
+          const imgExt = validateCustomCoverFile(input.cover_file);
+          const imgBuffer = Buffer.from(await input.cover_file.arrayBuffer());
+          const coverFileName = `${slug}-${Date.now()}-custom${imgExt}`;
+          const res = await uploadCoverFile({ filename: coverFileName, buffer: imgBuffer, mimeType: input.cover_file.type || 'image/jpeg' });
+          cover = res.path;
+          createdCoverFile = res.path;
+        } catch (err) {
+          await deleteEbookFile(safeFileName);
+          return json({ error: err.message || 'ไม่สามารถอัปโหลดรูปหน้าปกได้' }, 400);
+        }
+      } else if (coverMode === 'default') {
+        cover = DEFAULT_COVER;
+      } else {
+        // auto_first_page
+        if (ext === '.pdf') {
+          const pageImg = await extractPdfFirstPage(buffer);
+          if (pageImg) {
+            try {
+              const coverFileName = `${slug}-${Date.now()}-auto.png`;
+              const res = await uploadCoverFile({ filename: coverFileName, buffer: pageImg, mimeType: 'image/png' });
+              cover = res.path;
+              createdCoverFile = res.path;
+            } catch {
+              cover = DEFAULT_COVER;
+              notice = 'ไม่สามารถบันทึกรูปหน้าปกอัตโนมัติได้ ระบบจะใช้หน้าปกเริ่มต้น';
+            }
+          } else {
+            cover = DEFAULT_COVER;
+            notice = 'ไม่สามารถดึงหน้าแรกของไฟล์ได้ ระบบจะใช้หน้าปกเริ่มต้น';
+          }
+        } else {
+          cover = DEFAULT_COVER;
+          notice = 'ไฟล์ประเภทนี้ไม่รองรับการสร้างหน้าปกอัตโนมัติ ระบบจะใช้หน้าปกเริ่มต้น';
+        }
+      }
+
+      let newBook;
+      try {
+        newBook = await createBook({
+          id: slug,
+          title,
+          subtitle,
+          description,
+          author,
+          price,
+          cover,
+          file: safeFileName,
+          active: true
+        });
+      } catch (err) {
+        await deleteEbookFile(safeFileName);
+        if (createdCoverFile) await deleteCoverFile(createdCoverFile);
+        throw err;
+      }
+
+      return json({
+        book: { id: newBook.id, title: newBook.title, price: newBook.price, cover: newBook.cover },
+        notice
       });
-
-      return json({ book: { id: newBook.id, title: newBook.title, price: newBook.price, cover: newBook.cover } });
     }
     if (input.action === 'update-book') {
       if (typeof input.id !== 'string') return json({ error: 'ไม่พบหนังสือ' }, 404);
@@ -149,21 +213,102 @@ export default { async fetch(request) {
       const changes = { title, subtitle, description, author, price };
 
       let newFileName = null;
+      let newFileBuffer = null;
+      let newFileExt = null;
       if (input.file && typeof input.file.arrayBuffer === 'function' && input.file.size > 0) {
-        const ext = validateUploadedFile(input.file);
-        newFileName = `${input.id}-${Date.now()}${ext}`;
-        const buffer = Buffer.from(await input.file.arrayBuffer());
-        await uploadEbookFile({ filename: newFileName, buffer, mimeType: input.file.type });
+        newFileExt = validateUploadedFile(input.file);
+        newFileName = `${input.id}-${Date.now()}${newFileExt}`;
+        newFileBuffer = Buffer.from(await input.file.arrayBuffer());
+        await uploadEbookFile({ filename: newFileName, buffer: newFileBuffer, mimeType: input.file.type });
         changes.file = newFileName;
       }
 
-      const book = await updateBookDetails(input.id, changes);
+      const coverMode = typeof input.cover_mode === 'string' && input.cover_mode.trim() ? input.cover_mode.trim() : null;
+      let notice = null;
+      let newCoverPath = null;
+      const oldCover = existing.cover;
+
+      if (coverMode === 'default') {
+        changes.cover = DEFAULT_COVER;
+      } else if (coverMode === 'custom') {
+        if (input.cover_file && typeof input.cover_file.arrayBuffer === 'function' && input.cover_file.size > 0) {
+          const imgExt = validateCustomCoverFile(input.cover_file);
+          const imgBuffer = Buffer.from(await input.cover_file.arrayBuffer());
+          const coverFileName = `${input.id}-${Date.now()}-custom${imgExt}`;
+          const res = await uploadCoverFile({ filename: coverFileName, buffer: imgBuffer, mimeType: input.cover_file.type || 'image/jpeg' });
+          changes.cover = res.path;
+          newCoverPath = res.path;
+        } else {
+          if (oldCover && !isDefaultCover(oldCover)) {
+            changes.cover = oldCover;
+          } else {
+            return json({ error: 'กรุณาเลือกรูปหน้าปกสำหรับโหมดอัปโหลดหน้าปกเอง' }, 400);
+          }
+        }
+      } else if (coverMode === 'auto_first_page') {
+        if (newFileBuffer) {
+          if (newFileExt === '.pdf') {
+            const pageImg = await extractPdfFirstPage(newFileBuffer);
+            if (pageImg) {
+              const coverFileName = `${input.id}-${Date.now()}-auto.png`;
+              const res = await uploadCoverFile({ filename: coverFileName, buffer: pageImg, mimeType: 'image/png' });
+              changes.cover = res.path;
+              newCoverPath = res.path;
+            } else {
+              changes.cover = DEFAULT_COVER;
+              notice = 'ไม่สามารถดึงหน้าแรกของไฟล์ได้ ระบบจะใช้หน้าปกเริ่มต้น';
+            }
+          } else {
+            changes.cover = DEFAULT_COVER;
+            notice = 'ไฟล์ประเภทนี้ไม่รองรับการสร้างหน้าปกอัตโนมัติ ระบบจะใช้หน้าปกเริ่มต้น';
+          }
+        } else {
+          const currentMode = inferCoverMode(oldCover);
+          if (currentMode === 'auto_first_page') {
+            changes.cover = oldCover;
+          } else {
+            const fileToRead = existing.file;
+            const fileExt = path.extname(fileToRead || '').toLowerCase();
+            if (fileExt === '.pdf') {
+              const existingBuf = await getEbookBuffer(fileToRead);
+              const pageImg = existingBuf ? await extractPdfFirstPage(existingBuf) : null;
+              if (pageImg) {
+                const coverFileName = `${input.id}-${Date.now()}-auto.png`;
+                const res = await uploadCoverFile({ filename: coverFileName, buffer: pageImg, mimeType: 'image/png' });
+                changes.cover = res.path;
+                newCoverPath = res.path;
+              } else {
+                changes.cover = DEFAULT_COVER;
+                notice = 'ไม่สามารถดึงหน้าแรกของไฟล์ได้ ระบบจะใช้หน้าปกเริ่มต้น';
+              }
+            } else {
+              changes.cover = DEFAULT_COVER;
+              notice = 'ไฟล์ประเภทนี้ไม่รองรับการสร้างหน้าปกอัตโนมัติ ระบบจะใช้หน้าปกเริ่มต้น';
+            }
+          }
+        }
+      }
+
+      let book;
+      try {
+        book = await updateBookDetails(input.id, changes);
+      } catch (err) {
+        if (newFileName) await deleteEbookFile(newFileName);
+        if (newCoverPath) await deleteCoverFile(newCoverPath);
+        throw err;
+      }
 
       if (newFileName && existing.file && existing.file !== newFileName && !defaultBookFiles.has(existing.file)) {
         await deleteEbookFile(existing.file);
       }
+      if (changes.cover && oldCover && oldCover !== changes.cover && !isDefaultCover(oldCover)) {
+        await deleteCoverFile(oldCover);
+      }
 
-      return json({ book: { id: book.id, title: book.title, subtitle: book.subtitle, description: book.description, author: book.author, price: book.price, cover: book.cover } });
+      return json({
+        book: { id: book.id, title: book.title, subtitle: book.subtitle, description: book.description, author: book.author, price: book.price, cover: book.cover },
+        notice
+      });
     }
     if (input.action === 'delete-book') {
       if (typeof input.id !== 'string') return json({ error: 'ไม่พบหนังสือ' }, 404);
@@ -179,6 +324,9 @@ export default { async fetch(request) {
       }
       if (existing.file && !defaultBookFiles.has(existing.file)) {
         await deleteEbookFile(existing.file);
+      }
+      if (existing.cover && !isDefaultCover(existing.cover)) {
+        await deleteCoverFile(existing.cover);
       }
       return json({ success: true, id: input.id });
     }
