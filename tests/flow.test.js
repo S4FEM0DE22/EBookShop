@@ -185,3 +185,31 @@ test('pending orders can be cancelled but cannot be paid or downloaded afterward
   const download = await downloadApi.fetch(request(`download?token=${token}`));
   assert.equal(download.status, 403);
 });
+
+test('customer profile update saves name fields and updates session', async () => {
+  const buyer = await account('profile');
+  const sessionRes1 = await customerApi.fetch(request('customer?view=session', undefined, buyer.cookie));
+  assert.equal(sessionRes1.status, 200);
+  const user1 = (await sessionRes1.json()).user;
+  assert.equal(user1.email, buyer.email);
+  assert.equal(user1.username, buyer.username);
+
+  const updateRes = await customerApi.fetch(request('customer', {
+    action: 'update-profile',
+    first: 'นพนันท์',
+    last: 'ศุภมาตร์'
+  }, buyer.cookie));
+  assert.equal(updateRes.status, 200);
+  const updatedCookie = updateRes.headers.get('set-cookie')?.split(';')[0];
+  assert.ok(updatedCookie);
+  const updatedUser = (await updateRes.json()).user;
+  assert.equal(updatedUser.firstName, 'นพนันท์');
+  assert.equal(updatedUser.lastName, 'ศุภมาตร์');
+  assert.equal(updatedUser.name, 'นพนันท์ ศุภมาตร์');
+
+  const sessionRes2 = await customerApi.fetch(request('customer?view=session', undefined, updatedCookie));
+  const user2 = (await sessionRes2.json()).user;
+  assert.equal(user2.firstName, 'นพนันท์');
+  assert.equal(user2.lastName, 'ศุภมาตร์');
+  assert.equal(user2.name, 'นพนันท์ ศุภมาตร์');
+});

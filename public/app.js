@@ -312,7 +312,7 @@ function authPage(mode = 'login', message = '') {
       const result = await api('customer', payload);
       if (result.confirmationRequired) { document.querySelector('#live-message').innerHTML = notice('สมัครสมาชิกแล้ว กรุณายืนยันอีเมลจากจดหมายก่อนเข้าสู่ระบบ', 'success'); button.textContent = originalText; return; }
       customerUser = result.user;
-      profileData = { name: profileData.email === customerUser.email ? profileData.name || customerUser.name : customerUser.name, email: customerUser.email };
+      profileData = { name: customerUser.name || '', firstName: customerUser.firstName || '', lastName: customerUser.lastName || '', email: customerUser.email };
       writeSession('safe-profile', profileData);
       finishAuth();
     } catch (error) {
@@ -516,7 +516,7 @@ async function logoutCustomer(button) {
     currentOrder = null;
     customerEmail = '';
     rememberDestination('#catalog');
-    profileData = { name: '', email: '' };
+    profileData = { name: '', firstName: '', lastName: '', email: '' };
     writeSession('safe-profile', profileData);
     window.history.replaceState(null, '', '#login');
     authPage();
@@ -534,33 +534,60 @@ async function logoutCustomer(button) {
   } finally { button.disabled = false; }
 }
 
-function profile() {
+function profileHeaderName(user, profile) {
+  const first = (user?.firstName || user?.first_name || profile?.firstName || profile?.first_name || '').trim();
+  const last = (user?.lastName || user?.last_name || profile?.lastName || profile?.last_name || '').trim();
+  if (first && last) return `${first} ${last}`;
+  if (first) return first;
+  const name = (user?.name || profile?.name || '').trim();
+  if (name && name !== user?.username) {
+    const parts = name.split(/\s+/).filter(Boolean);
+    if (parts.length > 0) return parts.join(' ');
+  }
+  return user?.username || 'สมาชิก SAFE MODE SHOP';
+}
+
+function profile(feedback = null) {
   if (!customerUser) return requireLogin('#profile');
-  const parts = (profileData.name || customerUser.name || '').trim().split(/\s+/);
+  const firstVal = (customerUser.firstName || customerUser.first_name || profileData.firstName || profileData.first_name || (customerUser.name && customerUser.name !== customerUser.username ? customerUser.name.trim().split(/\s+/)[0] : '') || '').trim();
+  const lastVal = (customerUser.lastName || customerUser.last_name || profileData.lastName || profileData.last_name || (customerUser.name && customerUser.name !== customerUser.username ? customerUser.name.trim().split(/\s+/).slice(1).join(' ') : '') || '').trim();
+  const headerName = profileHeaderName(customerUser, profileData);
+
   setView(`${pageHead('บัญชีของฉัน', 'จัดการโปรไฟล์และตั้งค่าบัญชีของคุณ')}
     <section class="white-panel dashboard-panel">
       <div class="dashboard-header">
-        <div class="dashboard-avatar">
+        <div class="dashboard-avatar" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
         </div>
         <div class="dashboard-meta">
-          <h2>${esc(customerUser.username || 'สมาชิก SAFE MODE SHOP')}</h2>
+          <h2>${esc(headerName)}</h2>
           <p>${esc(customerUser.email)}</p>
         </div>
       </div>
       <div class="dashboard-body">
         <div class="dashboard-section">
           <h3>ข้อมูลทั่วไป</h3>
-          ${customerUser.username ? `<p class="profile-username">Username: <strong>${esc(customerUser.username)}</strong></p>` : `<form id="username-form"><label for="profile-username">ตั้ง Username</label><input id="profile-username" name="username" required minlength="3" maxlength="24" pattern="[A-Za-z0-9_]{3,24}" placeholder="Username"><button class="pill-button outline" type="submit">บันทึก Username</button></form>`}
-          <form id="profile-form">
-            <div class="profile-fields">
-              <div><label for="profile-first">ชื่อ</label><input id="profile-first" name="first" autocomplete="given-name" value="${esc(parts[0] || '')}" placeholder="ชื่อ"></div>
-              <div><label for="profile-last">นามสกุล</label><input id="profile-last" name="last" autocomplete="family-name" value="${esc(parts.slice(1).join(' '))}" placeholder="นามสกุล"></div>
+          <form id="profile-form" class="profile-form">
+            <div class="form-group">
+              <label for="profile-username">Username</label>
+              <input id="profile-username" name="username" value="${esc(customerUser.username || '')}" ${customerUser.username ? 'readonly' : 'required minlength="3" maxlength="24" pattern="[A-Za-z0-9_]{3,24}"'} placeholder="Username">
+              ${customerUser.username ? '' : '<p class="field-note">ตั้ง Username สำหรับเข้าสู่ระบบ (3–24 ตัว ใช้ a-z, 0-9 หรือ _)</p>'}
             </div>
-            <p class="field-note">ชื่อที่แก้ไขจะใช้กรอกคำสั่งซื้อครั้งถัดไปบนอุปกรณ์นี้โดยอัตโนมัติ</p>
-            <div id="live-message" aria-live="polite"></div>
+            <div class="form-group">
+              <label for="profile-first">ชื่อ</label>
+              <input id="profile-first" name="first" autocomplete="given-name" value="${esc(firstVal)}" placeholder="ชื่อ">
+            </div>
+            <div class="form-group">
+              <label for="profile-last">นามสกุล</label>
+              <input id="profile-last" name="last" autocomplete="family-name" value="${esc(lastVal)}" placeholder="นามสกุล">
+            </div>
+            <div class="form-group">
+              <label for="profile-email">อีเมล</label>
+              <input id="profile-email" name="email" type="email" value="${esc(customerUser.email)}" readonly placeholder="Email">
+            </div>
+            <div id="live-message" aria-live="polite">${feedback ? notice(feedback.text, feedback.kind) : ''}</div>
             <div class="dashboard-actions">
-              <button class="pill-button dark" type="submit">บันทึกชื่อ</button>
+              <button class="pill-button dark" type="submit">บันทึกข้อมูล</button>
             </div>
           </form>
         </div>
@@ -578,8 +605,41 @@ function profile() {
         </div>
       </div>
     </section>`, 'profile');
-  document.querySelector('#username-form')?.addEventListener('submit', async event => { event.preventDefault(); const form = event.currentTarget; const button = form.querySelector('button'); button.disabled = true; try { const result = await api('customer', { action: 'claim-username', username: form.elements.namedItem('username').value }); customerUser = result.user; profile(); } catch (error) { document.querySelector('#live-message').innerHTML = notice(error.message); button.disabled = false; } });
-  document.querySelector('#profile-form').addEventListener('submit', event => { event.preventDefault(); const form = event.currentTarget; const first = form.elements.namedItem('first').value.trim(); const last = form.elements.namedItem('last').value.trim(); if (!first) { document.querySelector('#live-message').innerHTML = notice('กรุณากรอกชื่อ'); return; } profileData = { name: [first, last].filter(Boolean).join(' '), email: customerUser.email }; writeSession('safe-profile', profileData); document.querySelector('#live-message').innerHTML = notice('บันทึกชื่อแล้ว', 'success'); });
+
+  document.querySelector('#profile-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const button = form.querySelector('button[type=submit]');
+    const first = form.elements.namedItem('first').value.trim();
+    const last = form.elements.namedItem('last').value.trim();
+    const usernameInput = form.elements.namedItem('username');
+    const username = usernameInput ? usernameInput.value.trim() : '';
+
+    if (!first) {
+      document.querySelector('#live-message').innerHTML = notice('กรุณากรอกชื่อ');
+      return;
+    }
+    button.disabled = true;
+    button.textContent = 'กำลังบันทึก...';
+    try {
+      const payload = { action: 'update-profile', first, last };
+      if (!customerUser.username && username) payload.username = username;
+      const result = await api('customer', payload);
+      customerUser = result.user;
+      profileData = {
+        name: result.user.name,
+        firstName: result.user.firstName,
+        lastName: result.user.lastName,
+        email: customerUser.email
+      };
+      writeSession('safe-profile', profileData);
+      profile({ text: 'บันทึกข้อมูลเรียบร้อยแล้ว', kind: 'success' });
+    } catch (error) {
+      document.querySelector('#live-message').innerHTML = notice(error.message);
+      button.disabled = false;
+      button.textContent = 'บันทึกข้อมูล';
+    }
+  });
   document.querySelector('#customer-logout').addEventListener('click', event => logoutCustomer(event.currentTarget));
 }
 
@@ -618,7 +678,10 @@ try {
   const [catalog, session] = await Promise.all([api('books'), api('customer?view=session')]);
   books = catalog.books;
   customerUser = session.user;
-  if (customerUser && profileData.email !== customerUser.email) profileData = { name: customerUser.name, email: customerUser.email };
+  if (customerUser) {
+    profileData = { name: customerUser.name || '', firstName: customerUser.firstName || '', lastName: customerUser.lastName || '', email: customerUser.email };
+    writeSession('safe-profile', profileData);
+  }
   cart = cart.filter(id => book(id));
   selected = new Set(cart);
   refreshCartCount();
