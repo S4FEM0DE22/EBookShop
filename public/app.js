@@ -314,7 +314,7 @@ function authPage(mode = 'login', message = '') {
   if (customerUser) { window.history.replaceState(null, '', safeDestination(authNext) === '#catalog' ? '#profile' : safeDestination(authNext)); return route(); }
   const register = mode === 'register';
   const formFields = register
-    ? `<label for="auth-username">Username</label><input id="auth-username" name="username" autocomplete="username" required minlength="3" maxlength="24" pattern="[A-Za-z0-9_]{3,24}" placeholder="Username"><p class="field-note">ใช้ตัวอักษรอังกฤษ ตัวเลข หรือ _ จำนวน 3–24 ตัว</p><label for="auth-first">ชื่อ</label><input id="auth-first" name="first" autocomplete="given-name" maxlength="80" placeholder="ชื่อ"><label for="auth-last">นามสกุล</label><input id="auth-last" name="last" autocomplete="family-name" maxlength="80" placeholder="นามสกุล"><label for="auth-email">อีเมล</label><input id="auth-email" name="email" type="email" autocomplete="email" required maxlength="254" placeholder="อีเมล">`
+    ? `<label for="auth-username">Username</label><input id="auth-username" name="username" autocomplete="username" required minlength="3" maxlength="24" pattern="[A-Za-z0-9_]{3,24}" placeholder="Username"><p class="field-note">ใช้ตัวอักษรอังกฤษ ตัวเลข หรือ _ จำนวน 3–24 ตัว</p><label for="auth-first">ชื่อ</label><input id="auth-first" name="first" autocomplete="given-name" required maxlength="80" placeholder="ชื่อ"><label for="auth-last">นามสกุล</label><input id="auth-last" name="last" autocomplete="family-name" required maxlength="80" placeholder="นามสกุล"><label for="auth-email">อีเมล</label><input id="auth-email" name="email" type="email" autocomplete="email" required maxlength="254" placeholder="อีเมล">`
     : `<label for="auth-identifier">Username หรืออีเมล</label><input id="auth-identifier" name="identifier" autocomplete="username" required maxlength="254" placeholder="Username หรืออีเมล">`;
   const passIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
   const passWrap = (id, name, auto, placeholder) => `<div class="password-wrap"><input id="${id}" name="${name}" type="password" autocomplete="${auto}" required minlength="8" maxlength="128" placeholder="${placeholder}"><button type="button" class="toggle-password" aria-label="แสดงรหัสผ่าน" aria-pressed="false">${passIcon}</button></div>`;
@@ -347,6 +347,7 @@ function authPage(mode = 'login', message = '') {
         payload.first = form.elements.namedItem('first')?.value.trim() || '';
         payload.last = form.elements.namedItem('last')?.value.trim() || '';
         payload.confirmPassword = form.elements.namedItem('confirmPassword').value;
+        if (!payload.first || !payload.last) throw new Error('กรุณากรอกชื่อและนามสกุล');
         if (payload.password !== payload.confirmPassword) throw new Error('รหัสผ่านทั้งสองช่องไม่ตรงกัน');
       }
       else payload.identifier = form.elements.namedItem('identifier').value;

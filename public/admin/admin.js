@@ -60,7 +60,10 @@ function booksPanel() {
 }
 
 function customersPanel() {
-  return `<section class="panel"><div class="panel-head"><div><h2>บัญชีลูกค้า</h2><p>ข้อมูลนี้แสดงเฉพาะผู้ดูแลร้าน</p></div></div><div class="customer-list">${data.customers.length ? data.customers.map(item => `<article class="customer-row"><div class="customer-avatar" aria-hidden="true">${escapeHtml((item.username || item.email)[0].toUpperCase())}</div><div><h3>${escapeHtml(item.username || 'ยังไม่มี Username')}</h3><p>${escapeHtml(item.email)}</p><small>${item.createdAt ? `สมัครเมื่อ ${formatDate(item.createdAt)}` : 'บัญชีทดสอบในเครื่อง'}</small></div></article>`).join('') : '<div class="empty">ยังไม่มีบัญชีลูกค้า</div>'}</div></section>`;
+  return `<section class="panel"><div class="panel-head"><div><h2>บัญชีลูกค้า</h2><p>ข้อมูลนี้แสดงเฉพาะผู้ดูแลร้าน</p></div></div><div class="customer-list">${data.customers.length ? data.customers.map(item => {
+    const fullName = (item.firstName && item.lastName) ? `${item.firstName} ${item.lastName}` : (item.name || item.username || 'ลูกค้า');
+    return `<article class="customer-row"><div class="customer-avatar" aria-hidden="true">${escapeHtml((item.username || item.email)[0].toUpperCase())}</div><div><h3>${escapeHtml(item.username || 'ยังไม่มี Username')}</h3><p><strong>ชื่อ-นามสกุล:</strong> ${escapeHtml(fullName)}${item.firstName ? ` (ชื่อ: ${escapeHtml(item.firstName)}, นามสกุล: ${escapeHtml(item.lastName)})` : ''}</p><p><strong>อีเมล:</strong> ${escapeHtml(item.email)}</p><small>${item.createdAt ? `สมัครเมื่อ ${formatDate(item.createdAt)}` : 'บัญชีทดสอบในเครื่อง'}</small></div></article>`;
+  }).join('') : '<div class="empty">ยังไม่มีบัญชีลูกค้า</div>'}</div></section>`;
 }
 
 function showDialog(html) {
