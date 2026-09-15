@@ -21,13 +21,19 @@ function safeDestination(value) {
   return typeof value === 'string' && /^#(?:home|catalog|book\/[a-z0-9-]+|cart|checkout(?:\/[a-z0-9-]+)?|order\/EB-[A-F0-9]{24}|track|history|profile)$/.test(value) ? value : '#catalog';
 }
 function rememberDestination(value) { authNext = safeDestination(value); writeSession('safe-auth-next', authNext); }
+function clearActiveFocus() {
+  if (document.activeElement instanceof HTMLElement && document.activeElement !== document.body) {
+    document.activeElement.blur();
+  }
+}
 function finishAuth() {
   const next = safeDestination(authNext);
   rememberDestination('#catalog');
   window.history.replaceState(null, '', next);
-  route();
+  route(true);
 }
 function goBack(fallback = '#home') {
+  clearActiveFocus();
   if (window.history.length > 1 && (!document.referrer || document.referrer.startsWith(location.origin))) window.history.back();
   else location.hash = fallback;
 }
@@ -56,6 +62,7 @@ async function api(path, payload) {
 }
 function refreshCartCount() { cartCount.textContent = cart.length; cartCount.hidden = cart.length === 0; }
 function setView(html, active = '') {
+  clearActiveFocus();
   clearInterval(carouselInterval);
   app.innerHTML = html;
   const isAuth = active === 'login' || active === 'register';
@@ -577,7 +584,26 @@ function profile() {
 }
 
 function notFound() { setView(`<section class="white-panel empty-state"><h1>ไม่พบหน้านี้</h1><a class="pill-button dark" href="#home">กลับหน้าแรก</a></section>`); }
-function route() { const [section, id] = location.hash.slice(1).split('/'); if (!section || section === 'home') home(); else if (section === 'catalog') catalog(); else if (section === 'book') detail(id); else if (section === 'cart') cartPage(); else if (section === 'checkout') checkout(id); else if (section === 'order') orderPage(id); else if (section === 'track') track(); else if (section === 'history') orderHistory(); else if (section === 'profile') profile(); else if (section === 'login' || section === 'register') authPage(section); else if (section === 'forgot-password') forgotPage(); else if (section === 'reset-password') resetPage(); else notFound(); }
+let lastRoutedHash = null;
+function route(force = false) {
+  clearActiveFocus();
+  if (!force && location.hash === lastRoutedHash) return;
+  lastRoutedHash = location.hash;
+  const [section, id] = location.hash.slice(1).split('/');
+  if (!section || section === 'home') home();
+  else if (section === 'catalog') catalog();
+  else if (section === 'book') detail(id);
+  else if (section === 'cart') cartPage();
+  else if (section === 'checkout') checkout(id);
+  else if (section === 'order') orderPage(id);
+  else if (section === 'track') track();
+  else if (section === 'history') orderHistory();
+  else if (section === 'profile') profile();
+  else if (section === 'login' || section === 'register') authPage(section);
+  else if (section === 'forgot-password') forgotPage();
+  else if (section === 'reset-password') resetPage();
+  else notFound();
+}
 app.addEventListener('click', event => { const back = event.target.closest('[data-back-fallback]'); if (back) return goBack(back.dataset.backFallback); const login = event.target.closest('a[href="#login"]'); if (login && !customerUser && !/^#(?:login|register|forgot-password|reset-password)/.test(location.hash)) rememberDestination(location.hash || '#home'); const add = event.target.closest('[data-add]'); if (add) addToCart(add.dataset.add); });
 app.addEventListener('error', event => {
   const img = event.target;
@@ -588,5 +614,30 @@ app.addEventListener('error', event => {
   img.replaceWith(fallback);
 }, true);
 navAuthAction.addEventListener('click', () => { if (customerUser) { location.hash = '#profile'; profile(); } else { rememberDestination(location.hash || '#home'); location.hash = '#login'; authPage(); } });
-try { const [catalog, session] = await Promise.all([api('books'), api('customer?view=session')]); books = catalog.books; customerUser = session.user; if (customerUser && profileData.email !== customerUser.email) profileData = { name: customerUser.name, email: customerUser.email }; cart = cart.filter(id => book(id)); selected = new Set(cart); refreshCartCount(); window.addEventListener('hashchange', route); if (/^#(access_token|error=|error_code=)/.test(location.hash)) { const params = new URLSearchParams(location.hash.slice(1)); const failed = params.has('error'); const recovery = params.get('type') === 'recovery' && params.has('access_token'); resetToken = recovery ? params.get('access_token') : ''; window.history.replaceState(null, '', recovery ? '#reset-password' : '#login'); if (recovery) resetPage(); else authPage('login', failed ? 'ลิงก์ยืนยันหมดอายุหรือไม่ถูกต้อง' : 'ยืนยันอีเมลแล้ว กรุณาเข้าสู่ระบบ'); } else if (location.hash.startsWith('#reset-password?token=')) { resetToken = new URLSearchParams(location.hash.split('?')[1]).get('token') || ''; window.history.replaceState(null, '', '#reset-password'); resetPage(); } else route(); }
+try {
+  const [catalog, session] = await Promise.all([api('books'), api('customer?view=session')]);
+  books = catalog.books;
+  customerUser = session.user;
+  if (customerUser && profileData.email !== customerUser.email) profileData = { name: customerUser.name, email: customerUser.email };
+  cart = cart.filter(id => book(id));
+  selected = new Set(cart);
+  refreshCartCount();
+  window.addEventListener('hashchange', () => route());
+  window.addEventListener('popstate', () => route());
+  window.addEventListener('pageshow', event => { clearActiveFocus(); if (event.persisted) route(true); });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') clearActiveFocus(); });
+  if (/^#(access_token|error=|error_code=)/.test(location.hash)) {
+    const params = new URLSearchParams(location.hash.slice(1));
+    const failed = params.has('error');
+    const recovery = params.get('type') === 'recovery' && params.has('access_token');
+    resetToken = recovery ? params.get('access_token') : '';
+    window.history.replaceState(null, '', recovery ? '#reset-password' : '#login');
+    if (recovery) resetPage();
+    else authPage('login', failed ? 'ลิงก์ยืนยันหมดอายุหรือไม่ถูกต้อง' : 'ยืนยันอีเมลแล้ว กรุณาเข้าสู่ระบบ');
+  } else if (location.hash.startsWith('#reset-password?token=')) {
+    resetToken = new URLSearchParams(location.hash.split('?')[1]).get('token') || '';
+    window.history.replaceState(null, '', '#reset-password');
+    resetPage();
+  } else route(true);
+}
 catch (error) { app.innerHTML = `<section class="white-panel empty-state">${notice(error.message)}</section>`; }
