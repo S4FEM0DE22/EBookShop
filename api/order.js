@@ -17,7 +17,7 @@ export default { async fetch(request) {
     if (!order || (user && order.customer_id !== user.id)) return json({ error: 'ไม่พบคำสั่งซื้อนี้' }, 404);
     if (!user && (!validateEmail(input.email) || cleanEmail(input.email) !== cleanEmail(order.email))) return json({ error: 'ไม่พบคำสั่งซื้อนี้' }, 404);
     if (user && input.email && (!validateEmail(input.email) || cleanEmail(input.email) !== cleanEmail(order.email))) return json({ error: 'ไม่พบคำสั่งซื้อนี้' }, 404);
-    const origin = process.env.PUBLIC_SITE_URL?.replace(/\/$/, '') || new URL(request.url).origin;
+    const origin = (process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.PUBLIC_SITE_URL)?.replace(/\/$/, '') || new URL(request.url).origin;
     const books = await getOrderBooks(order);
     if (!user) {
       const { customerName, email, emailStatus, ...tracking } = orderView(order, books);

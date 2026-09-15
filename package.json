@@ -6,7 +6,7 @@
     "dev": "node server.mjs",
     "dev:supabase": "node scripts/start-supabase.mjs",
     "build": "node scripts/check-build.mjs",
-    "test": "node --test"
+    "test": "node --test --test-concurrency=1"
   },
   "engines": {
     "node": ">=20"

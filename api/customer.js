@@ -47,7 +47,7 @@ export default { async fetch(request) {
     const email = validateEmail(input.email) ? cleanEmail(input.email) : '';
     if (input.action === 'forgot-password') {
       if (!email) return json({ error: 'กรุณากรอกอีเมลที่ใช้สมัคร' }, 400);
-      const origin = process.env.PUBLIC_SITE_URL?.replace(/\/$/, '') || new URL(request.url).origin;
+      const origin = (process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.PUBLIC_SITE_URL)?.replace(/\/$/, '') || new URL(request.url).origin;
       const demoResetUrl = await forgotPassword(email, `${origin}/`);
       return json({ sent: true, ...(demoResetUrl ? { demoResetUrl } : {}) });
     }
