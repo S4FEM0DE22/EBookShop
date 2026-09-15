@@ -22,3 +22,6 @@ diff_*.txt
 output/
 *.bak
 
+
+.vercel
+.env*
