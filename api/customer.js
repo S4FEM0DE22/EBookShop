@@ -1,6 +1,6 @@
 import { claimUsername, clearSessionCookie, customer, forgotPassword, login, register, resetPassword, sameOrigin, sessionCookie } from '../lib/customer-auth.js';
 import { body, cleanEmail, fail, json, orderView, validateEmail } from '../lib/http.js';
-import { listCustomerOrders, getOrderBooks } from '../lib/store.js';
+import { listCustomerOrders, listAllBooks } from '../lib/store.js';
 
 function reply(data, status = 200, cookie) {
   const headers = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' };
@@ -18,8 +18,9 @@ export default { async fetch(request) {
       if (url.searchParams.get('view') === 'session') return json({ user: user ? publicUser(user) : null });
       if (url.searchParams.get('view') === 'orders') {
         if (!user) return json({ error: 'กรุณาเข้าสู่ระบบ' }, 401);
-        const rows = await listCustomerOrders(user.id);
-        return json({ orders: await Promise.all(rows.map(async order => orderView(order, await getOrderBooks(order)))) });
+        const [rows, books] = await Promise.all([listCustomerOrders(user.id), listAllBooks()]);
+        const bookMap = new Map(books.map(book => [book.id, book]));
+        return json({ orders: rows.map(order => orderView(order, (Array.isArray(order.book_ids) && order.book_ids.length ? order.book_ids : [order.book_id]).map(id => bookMap.get(id)).filter(Boolean))) });
       }
       return json({ error: 'ไม่พบข้อมูล' }, 404);
     }
@@ -61,6 +62,7 @@ export default { async fetch(request) {
     if (input.action === 'register') {
       const username = typeof input.username === 'string' ? input.username.trim().toLowerCase() : '';
       if (!validUsername(username) || !email) return json({ error: 'กรุณาตรวจ Username และอีเมล (Username ใช้ a-z, 0-9 หรือ _ จำนวน 3–24 ตัว)' }, 400);
+      if (input.confirmPassword != null && input.confirmPassword !== password) return json({ error: 'รหัสผ่านทั้งสองช่องไม่ตรงกัน' }, 400);
       const result = await register(username, email, password);
       if (result.confirmationRequired) return reply({ user: null, confirmationRequired: true }, 201);
       return reply({ user: publicUser(result.user), confirmationRequired: false }, 201, sessionCookie(request, result.user));

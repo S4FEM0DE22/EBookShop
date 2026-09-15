@@ -1,7 +1,11 @@
 .env
 .env.local
+.env.*.local
 .data/
 private-books/
 tmp/
+diff_*.txt
+full_diff.patch
+*.bak
+*.log
 tests/
-scripts/

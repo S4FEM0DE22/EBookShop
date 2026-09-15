@@ -5,7 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#242424">
   <meta name="description" content="SAFE MODE SHOP ร้าน E-book สาธิต สั่งซื้อและชำระเงินจำลองโดยไม่มีการรับเงินจริง">
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="icon" type="image/png" href="/assets/safe-mode-shop-white.png">
+  <link rel="apple-touch-icon" href="/assets/safe-mode-shop-white.png">
+  <link rel="manifest" href="/manifest.webmanifest">
   <link rel="stylesheet" href="/styles.css">
   <title>SAFE MODE SHOP — ร้าน E-book สาธิต</title>
 </head>
@@ -15,19 +17,32 @@
       <a class="brand" href="#home" aria-label="SAFE MODE SHOP หน้าร้าน"><img src="/assets/safe-mode-shop-white.png" alt="SAFE MODE SHOP"></a>
       <nav class="nav-pills" aria-label="เมนูหลัก">
         <a href="#home" data-nav="home">หน้าแรก</a>
-        <a href="#catalog" data-nav="catalog">สินค้า</a>
-        <a href="#cart" data-nav="orders">คำสั่งซื้อ <span id="cart-count" class="cart-count" hidden></span></a>
-        <a href="#profile" data-nav="profile" hidden>โปรไฟล์</a>
-        <a href="#login" data-nav="login">เข้าสู่ระบบ</a>
-        <a href="#register" data-nav="register">สมัครสมาชิก</a>
-        <button class="nav-auth-action" id="nav-auth-action" type="button" aria-label="เข้าสู่ระบบ" title="เข้าสู่ระบบ">
-          <svg class="login-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6"/></svg>
-          <svg class="logout-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 17l5-5-5-5"/><path d="M19 12H7"/><path d="M12 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h6"/></svg>
+        <a href="#catalog" data-nav="catalog">E-books</a>
+        <a href="#cart" data-nav="cart">ตะกร้า <span id="cart-count" class="cart-count" hidden></span></a>
+        <a href="#track" data-nav="track"><span class="nav-track-long">ติดตามคำสั่งซื้อ</span><span class="nav-track-short">ติดตาม</span></a>
+        <button class="nav-auth-action" id="nav-auth-action" type="button" aria-label="บัญชีผู้ใช้: เข้าสู่ระบบ">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg>
         </button>
       </nav>
     </header>
     <main id="app" tabindex="-1"><div class="loading">กำลังโหลดร้านหนังสือ…</div></main>
-    <footer class="site-footer"><span>SAFE MODE SHOP · E-book Demo</span><span>DEMO ONLY · ไม่มีการรับเงินจริง</span></footer>
+    <footer class="site-footer">
+      <div class="footer-top">
+        <div class="footer-brand">
+          <img src="/assets/safe-mode-shop-white.png" alt="SAFE MODE SHOP">
+          <p>E-book Demo Shop</p>
+        </div>
+        <div class="footer-nav">
+          <a href="#catalog">แคตตาล็อก</a>
+          <a href="#track">ติดตามคำสั่งซื้อ</a>
+          <a href="#login">บัญชีผู้ใช้</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span class="footer-copy">&copy; 2026 SAFE MODE SHOP</span>
+        <span class="footer-badge">DEMO ONLY · ไม่มีการรับเงินจริง</span>
+      </div>
+    </footer>
   </div>
   <script type="module" src="/app.js"></script>
 </body>

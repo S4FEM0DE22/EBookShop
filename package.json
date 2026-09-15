@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "node server.mjs",
     "dev:supabase": "node scripts/start-supabase.mjs",
+    "build": "node scripts/check-build.mjs",
     "test": "node --test"
   },
   "engines": { "node": ">=20" }

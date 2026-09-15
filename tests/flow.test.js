@@ -67,6 +67,16 @@ test('complete local demo flow and protect order lookup and download', async () 
   assert.equal(order.status, 'PENDING');
   assert.equal(order.email, buyer.email);
 
+  const wrongEmail = await orderApi.fetch(request('order', { id: order.id, email: stranger.email }));
+  assert.equal(wrongEmail.status, 404);
+  const publicLookup = await orderApi.fetch(request('order', { id: order.id, email: buyer.email }));
+  assert.equal(publicLookup.status, 200);
+  const publicOrder = (await publicLookup.json()).order;
+  assert.equal(publicOrder.status, 'PENDING');
+  assert.equal(publicOrder.email, undefined);
+  assert.equal(publicOrder.customerName, undefined);
+  assert.equal(publicOrder.downloadUrl, undefined);
+
   const badLookup = await orderApi.fetch(request('order', { id: order.id, email: buyer.email }, stranger.cookie));
   assert.equal(badLookup.status, 404);
   const badPay = await payApi.fetch(request('pay', { id: order.id, email: buyer.email }, stranger.cookie));
@@ -79,6 +89,9 @@ test('complete local demo flow and protect order lookup and download', async () 
   assert.equal(paid.status, 'PAID');
   assert.equal(paid.emailStatus, 'DEMO');
   assert.ok(paid.downloadUrl);
+  const publicPaid = (await (await orderApi.fetch(request('order', { id: order.id, email: buyer.email }))).json()).order;
+  assert.equal(publicPaid.status, 'PAID');
+  assert.equal(publicPaid.downloadUrls, undefined);
   const lateCancel = await cancelApi.fetch(request('cancel', { id: order.id }, buyer.cookie));
   assert.equal(lateCancel.status, 409);
 
@@ -101,6 +114,7 @@ test('complete local demo flow and protect order lookup and download', async () 
   assert.equal((await login.json()).user.email, buyer.email);
   assert.equal((await customerApi.fetch(request('customer', { action: 'login', identifier: buyer.username, password: buyer.password }))).status, 200);
   assert.equal((await customerApi.fetch(request('customer', { action: 'login', email: buyer.email, password: 'wrong-password' }))).status, 401);
+  assert.equal((await customerApi.fetch(request('customer', { action: 'register', username: `new_${randomUUID().slice(0, 8)}`, email: `new-${randomUUID()}@example.com`, password: 'password-123', confirmPassword: 'wrong-password' }))).status, 400);
   const logout = await customerApi.fetch(request('customer', { action: 'logout' }, buyer.cookie));
   assert.match(logout.headers.get('set-cookie'), /Max-Age=0/);
 });
