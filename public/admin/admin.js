@@ -46,7 +46,7 @@ function metrics() {
   const pending = data.orders.filter(order => order.status === 'PENDING').length;
   const paid = data.orders.filter(order => order.status === 'PAID').length;
   const active = data.books.filter(book => book.active).length;
-  return `<div class="metrics"><div class="metric"><span>คำสั่งซื้อทั้งหมด</span><strong>${data.orders.length}</strong><small>รายการล่าสุดสูงสุด 100 รายการ</small></div><div class="metric alert"><span>รอชำระ</span><strong>${pending}</strong><small>ระบบชำระเงินจำลอง</small></div><div class="metric"><span>ชำระแล้ว</span><strong>${paid}</strong><small>พร้อมดาวน์โหลด E-book</small></div><div class="metric"><span>หนังสือที่เปิดขาย</span><strong>${active}</strong><small>จากทั้งหมด ${data.books.length} เล่ม · ลูกค้า ${data.customers.length} บัญชี</small></div></div>`;
+  return `<div class="metrics"><div class="metric"><span>คำสั่งซื้อทั้งหมด</span><strong>${data.orders.length}</strong><small>รายการล่าสุดสูงสุด 100 รายการ</small></div><div class="metric alert"><span>รอชำระ</span><strong>${pending}</strong><small>ระบบชำระเงินจำลอง</small></div><div class="metric"><span>ชำระแล้ว</span><strong>${paid}</strong><small>E-Book พร้อมใช้งาน</small></div><div class="metric"><span>หนังสือที่เปิดขาย</span><strong>${active}</strong><small>จากทั้งหมด ${data.books.length} เล่ม · ลูกค้า ${data.customers.length} บัญชี</small></div></div>`;
 }
 
 function orderTable(limit) {
