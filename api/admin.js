@@ -87,7 +87,14 @@ export default { async fetch(request) {
       return json({
         books: books.map(({ file, ...book }) => ({ ...book, fileName: file, coverMode: inferCoverMode(book.cover) })),
         orders: orders.map(order => orderView(order, (Array.isArray(order.book_ids) && order.book_ids.length ? order.book_ids : [order.book_id]).map(id => bookMap.get(id)).filter(Boolean))),
-        customers: customers.map(item => ({ username: item.username, email: item.email, createdAt: item.created_at })),
+        customers: customers.map(item => ({
+          username: item.username,
+          email: item.email,
+          name: item.name || '',
+          firstName: item.firstName || '',
+          lastName: item.lastName || '',
+          createdAt: item.created_at
+        })),
         emailConfigured: emailConfigured()
       });
     }
