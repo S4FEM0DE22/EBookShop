@@ -56,7 +56,7 @@ function orderTable(limit) {
 }
 
 function booksPanel() {
-  return `<section class="panel"><div class="panel-head"><div><h2>จัดการหนังสือ</h2><p>แก้ข้อมูล ราคา และเปิดหรือซ่อนหนังสือจากหน้าร้าน</p></div></div><div class="catalog-grid">${data.books.map(book => `<article class="book"><img src="${escapeHtml(book.cover)}" alt="" loading="lazy"><div><h3>${escapeHtml(book.title)}</h3><p>${escapeHtml(book.subtitle)}</p><strong>${book.price} บาท</strong><span class="pill ${book.active ? 'paid' : 'cancelled'}">${book.active ? 'เปิดขาย' : 'ซ่อนจากร้าน'}</span><br><button class="mini" data-action="edit-book" data-id="${escapeHtml(book.id)}">แก้ไข</button> <button class="mini" data-action="set-book-active" data-id="${escapeHtml(book.id)}" data-active="${!book.active}">${book.active ? 'ซ่อนหนังสือ' : 'เปิดขาย'}</button></div></article>`).join('')}</div></section>`;
+  return `<section class="panel"><div class="panel-head"><div><h2>จัดการหนังสือ</h2><p>เพิ่ม แก้ไข ราคา และเปิดหรือซ่อนหนังสือจากหน้าร้าน</p></div><button class="primary" data-action="add-book">+ เพิ่มหนังสือ</button></div><div class="catalog-grid">${data.books.map(book => `<article class="book"><img src="${escapeHtml(book.cover || '/assets/covers/default-book-cover.svg')}" alt="" loading="lazy"><div><h3>${escapeHtml(book.title)}</h3><p>${escapeHtml(book.subtitle)}</p><strong>${book.price} บาท</strong><span class="pill ${book.active ? 'paid' : 'cancelled'}">${book.active ? 'เปิดขาย' : 'ซ่อนจากร้าน'}</span><br><button class="mini" data-action="edit-book" data-id="${escapeHtml(book.id)}">แก้ไข</button> <button class="mini" data-action="set-book-active" data-id="${escapeHtml(book.id)}" data-active="${!book.active}">${book.active ? 'ซ่อนหนังสือ' : 'เปิดขาย'}</button> <button class="mini danger" data-action="delete-book" data-id="${escapeHtml(book.id)}" title="ลบหนังสือ">ลบ</button></div></article>`).join('')}</div></section>`;
 }
 
 function customersPanel() {
@@ -78,26 +78,95 @@ function showDialog(html) {
 function showOrder(id) {
   const order = data.orders.find(item => item.id === id);
   if (!order) return toast('ไม่พบคำสั่งซื้อ', true);
-  showDialog(`<div class="dialog-head"><h2>รายละเอียดคำสั่งซื้อ</h2><button type="button" data-close-dialog aria-label="ปิด">×</button></div><p class="order-id">${escapeHtml(order.id)} <button class="mini" id="copy-order-id" type="button">คัดลอกเลข</button></p><p>${escapeHtml(order.customerName)} · ${escapeHtml(order.email)}</p><p>สร้างเมื่อ ${formatDate(order.createdAt)} · สถานะ ${statusText(order.status)} · ${emailText(order.emailStatus)}</p><div class="dialog-items">${order.items.map(item => `<div><img src="${escapeHtml(item.cover)}" alt="" loading="lazy"><span>${escapeHtml(item.title)}</span><strong>${item.price} บาท</strong></div>`).join('')}</div><p class="dialog-total">ยอดรวมจำลอง <strong>${order.price} บาท</strong></p><button class="mini" data-close-dialog type="button">ปิด</button>`);
+  showDialog(`<div class="dialog-head"><h2>รายละเอียดคำสั่งซื้อ</h2><button type="button" data-close-dialog aria-label="ปิด">×</button></div><p class="order-id">${escapeHtml(order.id)} <button class="mini" id="copy-order-id" type="button">คัดลอกเลข</button></p><p>${escapeHtml(order.customerName)} · ${escapeHtml(order.email)}</p><p>สร้างเมื่อ ${formatDate(order.createdAt)} · สถานะ ${statusText(order.status)} · ${emailText(order.emailStatus)}</p><div class="dialog-items">${order.items.map(item => `<div><img src="${escapeHtml(item.cover || '/assets/covers/default-book-cover.svg')}" alt="" loading="lazy"><span>${escapeHtml(item.title)}</span><strong>${item.price} บาท</strong></div>`).join('')}</div><p class="dialog-total">ยอดรวมจำลอง <strong>${order.price} บาท</strong></p><button class="mini" data-close-dialog type="button">ปิด</button>`);
   document.querySelector('#copy-order-id').addEventListener('click', async () => { try { await navigator.clipboard.writeText(order.id); toast('คัดลอกเลขคำสั่งซื้อแล้ว'); } catch { toast('คัดลอกไม่สำเร็จ', true); } });
 }
 
-function editBook(id) {
-  const book = data.books.find(item => item.id === id);
-  if (!book) return toast('ไม่พบหนังสือ', true);
-  const dialog = showDialog(`<div class="dialog-head"><h2>แก้ไขหนังสือ</h2><button type="button" data-close-dialog aria-label="ปิด">×</button></div><form id="edit-book-form"><label>ชื่อหนังสือ<input name="title" class="field" required minlength="3" maxlength="140" value="${escapeHtml(book.title)}"></label><label>คำอธิบายสั้น<input name="subtitle" class="field" required minlength="3" maxlength="180" value="${escapeHtml(book.subtitle)}"></label><label>รายละเอียด<textarea name="description" class="field" required minlength="10" maxlength="1000">${escapeHtml(book.description)}</textarea></label><label>ผู้จัดทำ<input name="author" class="field" required minlength="2" maxlength="100" value="${escapeHtml(book.author)}"></label><label>ราคาจำลอง (บาท)<input name="price" class="field" type="number" required min="1" max="100000" value="${book.price}"></label><div class="dialog-actions"><button type="button" class="mini" data-close-dialog>ปิด</button><button type="submit" class="primary">บันทึกหนังสือ</button></div></form>`);
-  dialog.querySelector('#edit-book-form').addEventListener('submit', async event => {
+function openBookModal(mode = 'create', book = null) {
+  const isCreate = mode === 'create';
+  const title = isCreate ? 'เพิ่มหนังสือ' : 'แก้ไขหนังสือ';
+  const submitText = isCreate ? 'เพิ่มหนังสือ' : 'บันทึกหนังสือ';
+  const loadingText = isCreate ? 'กำลังเพิ่มหนังสือ...' : 'กำลังบันทึกข้อมูล...';
+
+  const html = `
+    <div class="dialog-head">
+      <h2>${title}</h2>
+      <button type="button" data-close-dialog aria-label="ปิด">×</button>
+    </div>
+    <form id="book-form">
+      <label>
+        ไฟล์ E-Book ${isCreate ? '<span class="req">*</span>' : ''}
+        ${!isCreate && (book?.fileName || book?.file) ? `
+          <div class="current-file-box">
+            ไฟล์ปัจจุบัน: <strong>${escapeHtml(book.fileName || book.file)}</strong>
+          </div>` : ''}
+        <input name="file" type="file" class="field file-field" accept=".pdf,.epub,.docx,.zip,.mobi,.txt" ${isCreate ? 'required' : ''}>
+        <small class="field-hint">รองรับไฟล์ .pdf, .epub, .docx, .zip (สูงสุด 50MB)${!isCreate ? ' · เลือกไฟล์ใหม่หากต้องการเปลี่ยน' : ''}</small>
+      </label>
+      <label>
+        ชื่อหนังสือ <span class="req">*</span>
+        <input name="title" class="field" required minlength="3" maxlength="140" value="${escapeHtml(book?.title || '')}" placeholder="ชื่อหนังสือ">
+      </label>
+      <label>
+        คำอธิบายสั้น <span class="req">*</span>
+        <input name="subtitle" class="field" required minlength="3" maxlength="180" value="${escapeHtml(book?.subtitle || '')}" placeholder="คำอธิบายสั้น เช่น ใบงานที่ 1 · คู่มือใช้งาน">
+      </label>
+      <label>
+        รายละเอียด <span class="req">*</span>
+        <textarea name="description" class="field textarea-field" required minlength="10" maxlength="1000" placeholder="รายละเอียดเนื้อหาในเล่ม...">${escapeHtml(book?.description || '')}</textarea>
+      </label>
+      <label>
+        ผู้จัดทำ <span class="req">*</span>
+        <input name="author" class="field" required minlength="2" maxlength="100" value="${escapeHtml(book?.author || 'นพนันท์ ศุภมาตร์')}" placeholder="ชื่อผู้จัดทำ">
+      </label>
+      <label>
+        ราคาจำลอง (บาท) <span class="req">*</span>
+        <input name="price" class="field" type="number" required min="1" max="100000" value="${book ? book.price : 99}" placeholder="เช่น 99">
+      </label>
+      <div id="book-form-error" class="error" role="alert"></div>
+      <div class="dialog-actions">
+        <button type="button" class="mini" data-close-dialog>ยกเลิก</button>
+        <button type="submit" class="primary" id="book-submit-btn">${submitText}</button>
+      </div>
+    </form>
+  `;
+
+  const dialog = showDialog(html);
+  const form = dialog.querySelector('#book-form');
+  const errorEl = dialog.querySelector('#book-form-error');
+  const submitBtn = dialog.querySelector('#book-submit-btn');
+
+  form.addEventListener('submit', async event => {
     event.preventDefault();
-    const form = event.currentTarget;
-    const button = form.querySelector('[type=submit]');
-    button.disabled = true;
+    errorEl.textContent = '';
+    submitBtn.disabled = true;
+    submitBtn.textContent = loadingText;
+
     try {
-      const values = Object.fromEntries(new FormData(form));
-      await post({ action: 'update-book', id, ...values, price: Number(values.price) });
+      const formData = new FormData(form);
+      formData.append('action', isCreate ? 'add-book' : 'update-book');
+      if (!isCreate) formData.append('id', book.id);
+
+      const response = await fetch('/api/admin', {
+        method: 'POST',
+        body: formData,
+        credentials: 'same-origin',
+        cache: 'no-store'
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || (isCreate ? 'ไม่สามารถอัปโหลดไฟล์ E-Book ได้ กรุณาลองใหม่' : 'ไม่สามารถบันทึกข้อมูลหนังสือได้'));
+      }
+
       dialog.close();
       await load();
-      toast('บันทึกข้อมูลหนังสือแล้ว');
-    } catch (error) { toast(error.message, true); button.disabled = false; }
+      toast(isCreate ? 'เพิ่มหนังสือเรียบร้อยแล้ว' : 'บันทึกข้อมูลหนังสือแล้ว');
+    } catch (error) {
+      errorEl.textContent = error.message;
+      toast(error.message, true);
+      submitBtn.disabled = false;
+      submitBtn.textContent = submitText;
+    }
   });
 }
 
@@ -126,7 +195,16 @@ app.addEventListener('click', async event => {
   if (target.dataset.view) { view = target.dataset.view; render(); return; }
   const action = target.dataset.action;
   if (action === 'view-order') return showOrder(target.dataset.id);
-  if (action === 'edit-book') return editBook(target.dataset.id);
+  if (action === 'add-book') return openBookModal('create');
+  if (action === 'edit-book') {
+    const book = data.books.find(b => b.id === target.dataset.id);
+    if (!book) return toast('ไม่พบหนังสือ', true);
+    return openBookModal('edit', book);
+  }
+  if (action === 'delete-book') {
+    const book = data.books.find(b => b.id === target.dataset.id);
+    if (!confirm(`ยืนยันการลบหนังสือ "${book ? book.title : target.dataset.id}"?`)) return;
+  }
   target.disabled = true;
   try {
     if (action === 'refresh') { await load(); toast('อัปเดตข้อมูลล่าสุดแล้ว'); return; }
@@ -135,7 +213,7 @@ app.addEventListener('click', async event => {
     if (action === 'set-book-active') input.active = target.dataset.active === 'true';
     await post(input);
     await load();
-    toast(action === 'set-book-active' ? 'อัปเดตหน้าร้านแล้ว' : action === 'cancel-order' ? 'ยกเลิกคำสั่งซื้อแล้ว' : action === 'mark-paid' ? 'บันทึกการชำระเงินจำลองแล้ว' : 'ดำเนินการส่งอีเมลแล้ว');
+    toast(action === 'set-book-active' ? 'อัปเดตหน้าร้านแล้ว' : action === 'delete-book' ? 'ลบหนังสือเรียบร้อยแล้ว' : action === 'cancel-order' ? 'ยกเลิกคำสั่งซื้อแล้ว' : action === 'mark-paid' ? 'บันทึกการชำระเงินจำลองแล้ว' : 'ดำเนินการส่งอีเมลแล้ว');
   } catch (error) { toast(error.message, true); if (error.status === 401) renderLogin(); }
   finally { target.disabled = false; }
 });

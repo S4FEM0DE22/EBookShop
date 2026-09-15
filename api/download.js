@@ -1,4 +1,4 @@
-import { localBookBytes, signedBookUrl, verifyDownloadToken } from '../lib/delivery.js';
+import { localBookBytes, resolveMimeType, signedBookUrl, verifyDownloadToken } from '../lib/delivery.js';
 import { fail, json, method } from '../lib/http.js';
 import { getBook, getOrder, isLocalDemo } from '../lib/store.js';
 
@@ -17,7 +17,7 @@ export default { async fetch(request) {
     if (!isLocalDemo()) return Response.redirect(await signedBookUrl(book), 302);
     const bytes = await localBookBytes(book);
     return new Response(bytes, { headers: {
-      'Content-Type': 'application/pdf',
+      'Content-Type': resolveMimeType(book.file),
       'Content-Disposition': `attachment; filename="${book.file}"`,
       'Cache-Control': 'no-store',
       'X-Content-Type-Options': 'nosniff'

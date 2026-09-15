@@ -1,11 +1,15 @@
+import path from 'node:path';
+import { randomBytes } from 'node:crypto';
 import { adminConfigured, clearSessionCookie, correctPassword, isAdmin, sessionCookie } from '../lib/admin-auth.js';
 import { listCustomerProfiles } from '../lib/customer-auth.js';
 import { emailConfigured } from '../lib/delivery.js';
 import { body, fail, json, orderView } from '../lib/http.js';
-import { books as currentBooks } from '../lib/catalog.js';
-import { getOrder, listAllBooks, listOrders, setBookActive, updateBookDetails } from '../lib/store.js';
+import { createBook, deleteBook, deleteEbookFile, getBook, getOrder, listAllBooks, listOrders, setBookActive, updateBookDetails, uploadEbookFile } from '../lib/store.js';
 import payApi from './pay.js';
 import cancelApi from './cancel.js';
+
+const defaultBookFiles = new Set(['media-player-pro.pdf', 'sqlite-task-manager-guide.pdf', 'sqlite-task-manager-report.pdf', 'tarot-app.pdf']);
+const allowedExts = new Set(['.pdf', '.epub', '.docx', '.zip', '.mobi', '.txt']);
 
 function reply(data, status = 200, cookie) {
   const headers = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' };
@@ -20,6 +24,26 @@ function sameOrigin(request) {
 
 function requireAdmin(request) {
   if (!isAdmin(request)) throw Object.assign(new Error('กรุณาเข้าสู่ระบบผู้ดูแล'), { status: 401 });
+}
+
+function validateUploadedFile(file) {
+  if (!file || typeof file.arrayBuffer !== 'function') throw new Error('กรุณาเลือกไฟล์ E-Book');
+  if (file.size <= 0) throw new Error('ไฟล์ E-Book ว่างเปล่า');
+  if (file.size > 52428800) throw new Error('ไฟล์ E-Book มีขนาดใหญ่เกิน 50MB');
+  const ext = path.extname(file.name || '').toLowerCase();
+  if (!allowedExts.has(ext)) throw new Error('รองรับเฉพาะไฟล์ .pdf, .epub, .docx, .zip');
+  return ext;
+}
+
+function makeSlug(title, id) {
+  if (typeof id === 'string' && /^[a-z0-9-]{3,80}$/.test(id.trim())) {
+    return id.trim().toLowerCase();
+  }
+  let slug = (title || '').trim().toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  if (slug.length < 3) slug = 'book-' + randomBytes(4).toString('hex');
+  return slug.slice(0, 60);
 }
 
 async function changeOrder(request, input) {
@@ -47,9 +71,8 @@ export default { async fetch(request) {
       if (url.searchParams.get('view') !== 'overview') throw Object.assign(new Error('ไม่พบข้อมูล'), { status: 404 });
       const [books, orders, customers] = await Promise.all([listAllBooks(), listOrders(), listCustomerProfiles()]);
       const bookMap = new Map(books.map(book => [book.id, book]));
-      const currentIds = new Set(currentBooks.map(book => book.id));
       return json({
-        books: books.filter(book => currentIds.has(book.id)).map(({ file, ...book }) => book),
+        books: books.map(({ file, ...book }) => ({ ...book, fileName: file })),
         orders: orders.map(order => orderView(order, (Array.isArray(order.book_ids) && order.book_ids.length ? order.book_ids : [order.book_id]).map(id => bookMap.get(id)).filter(Boolean))),
         customers: customers.map(item => ({ username: item.username, email: item.email, createdAt: item.created_at })),
         emailConfigured: emailConfigured()
@@ -66,19 +89,98 @@ export default { async fetch(request) {
     requireAdmin(request);
     if (input.action === 'logout') return reply({ authenticated: false }, 200, clearSessionCookie(request));
     if (input.action === 'set-book-active') {
-      if (typeof input.id !== 'string' || !/^[a-z0-9-]{1,80}$/.test(input.id) || typeof input.active !== 'boolean') throw new Error('ข้อมูลหนังสือไม่ถูกต้อง');
-      if (!currentBooks.some(book => book.id === input.id)) throw Object.assign(new Error('หนังสือนี้จัดการจากแดชบอร์ดไม่ได้'), { status: 404 });
-      const book = await setBookActive(input.id, input.active);
+      if (typeof input.id !== 'string' || !/^[a-z0-9-]{1,80}$/.test(input.id)) throw new Error('ข้อมูลหนังสือไม่ถูกต้อง');
+      const active = input.active === true || input.active === 'true';
+      const book = await setBookActive(input.id, active);
       if (!book) throw Object.assign(new Error('ไม่พบหนังสือ'), { status: 404 });
       return json({ book: { id: book.id, active: book.active } });
     }
+    if (input.action === 'add-book') {
+      const title = typeof input.title === 'string' ? input.title.trim() : '';
+      const subtitle = typeof input.subtitle === 'string' ? input.subtitle.trim() : '';
+      const description = typeof input.description === 'string' ? input.description.trim() : '';
+      const author = typeof input.author === 'string' ? input.author.trim() : '';
+      const price = Number(input.price);
+
+      if (title.length < 3 || title.length > 140 || subtitle.length < 3 || subtitle.length > 180 || description.length < 10 || description.length > 1000 || author.length < 2 || author.length > 100 || !Number.isInteger(price) || price < 1 || price > 100000) {
+        return json({ error: 'กรุณากรอกข้อมูลหนังสือและราคาให้ถูกต้อง' }, 400);
+      }
+
+      const ext = validateUploadedFile(input.file);
+      let slug = makeSlug(title, input.id);
+      const existing = await getBook(slug);
+      if (existing) slug = `${slug}-${randomBytes(2).toString('hex')}`;
+
+      const safeFileName = `${slug}-${Date.now()}${ext}`;
+      const buffer = Buffer.from(await input.file.arrayBuffer());
+      await uploadEbookFile({ filename: safeFileName, buffer, mimeType: input.file.type });
+
+      const cover = typeof input.cover === 'string' && input.cover.trim() ? input.cover.trim() : '/assets/covers/default-book-cover.svg';
+
+      const newBook = await createBook({
+        id: slug,
+        title,
+        subtitle,
+        description,
+        author,
+        price,
+        cover,
+        file: safeFileName,
+        active: true
+      });
+
+      return json({ book: { id: newBook.id, title: newBook.title, price: newBook.price, cover: newBook.cover } });
+    }
     if (input.action === 'update-book') {
-      if (typeof input.id !== 'string' || !currentBooks.some(book => book.id === input.id)) return json({ error: 'ไม่พบหนังสือ' }, 404);
-      const fields = ['title', 'subtitle', 'description', 'author'];
-      const changes = Object.fromEntries(fields.map(field => [field, typeof input[field] === 'string' ? input[field].trim() : '']));
-      if (changes.title.length < 3 || changes.title.length > 140 || changes.subtitle.length < 3 || changes.subtitle.length > 180 || changes.description.length < 10 || changes.description.length > 1000 || changes.author.length < 2 || changes.author.length > 100 || !Number.isInteger(input.price) || input.price < 1 || input.price > 100000) return json({ error: 'กรุณาตรวจข้อมูลหนังสือและราคา' }, 400);
-      const book = await updateBookDetails(input.id, { ...changes, price: input.price });
-      return json({ book: { id: book.id, title: book.title, price: book.price } });
+      if (typeof input.id !== 'string') return json({ error: 'ไม่พบหนังสือ' }, 404);
+      const existing = await getBook(input.id);
+      if (!existing) return json({ error: 'ไม่พบหนังสือ' }, 404);
+
+      const title = typeof input.title === 'string' ? input.title.trim() : '';
+      const subtitle = typeof input.subtitle === 'string' ? input.subtitle.trim() : '';
+      const description = typeof input.description === 'string' ? input.description.trim() : '';
+      const author = typeof input.author === 'string' ? input.author.trim() : '';
+      const price = Number(input.price);
+
+      if (title.length < 3 || title.length > 140 || subtitle.length < 3 || subtitle.length > 180 || description.length < 10 || description.length > 1000 || author.length < 2 || author.length > 100 || !Number.isInteger(price) || price < 1 || price > 100000) {
+        return json({ error: 'กรุณาตรวจข้อมูลหนังสือและราคา' }, 400);
+      }
+
+      const changes = { title, subtitle, description, author, price };
+
+      let newFileName = null;
+      if (input.file && typeof input.file.arrayBuffer === 'function' && input.file.size > 0) {
+        const ext = validateUploadedFile(input.file);
+        newFileName = `${input.id}-${Date.now()}${ext}`;
+        const buffer = Buffer.from(await input.file.arrayBuffer());
+        await uploadEbookFile({ filename: newFileName, buffer, mimeType: input.file.type });
+        changes.file = newFileName;
+      }
+
+      const book = await updateBookDetails(input.id, changes);
+
+      if (newFileName && existing.file && existing.file !== newFileName && !defaultBookFiles.has(existing.file)) {
+        await deleteEbookFile(existing.file);
+      }
+
+      return json({ book: { id: book.id, title: book.title, subtitle: book.subtitle, description: book.description, author: book.author, price: book.price, cover: book.cover } });
+    }
+    if (input.action === 'delete-book') {
+      if (typeof input.id !== 'string') return json({ error: 'ไม่พบหนังสือ' }, 404);
+      const existing = await getBook(input.id);
+      if (!existing) return json({ error: 'ไม่พบหนังสือ' }, 404);
+      try {
+        await deleteBook(input.id);
+      } catch (err) {
+        if (err.status === 409 || (err.message && err.message.includes('violates foreign key constraint'))) {
+          return json({ error: 'ไม่สามารถลบหนังสือเล่มนี้ได้ เนื่องจากมีประวัติคำสั่งซื้ออ้างอิงอยู่ แนะนำให้ใช้ปุ่ม "ซ่อนหนังสือ" แทน' }, 409);
+        }
+        throw err;
+      }
+      if (existing.file && !defaultBookFiles.has(existing.file)) {
+        await deleteEbookFile(existing.file);
+      }
+      return json({ success: true, id: input.id });
     }
     return changeOrder(request, input);
   } catch (error) { return fail(error); }

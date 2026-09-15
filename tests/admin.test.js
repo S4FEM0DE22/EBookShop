@@ -48,6 +48,41 @@ test('admin data and changes require a valid server-signed session', async () =>
     assert.equal((await updated.json()).book.id, editable.id);
     assert.equal((await adminApi.fetch(request('', { action: 'update-book', id: editable.id, title: '', subtitle: '', description: '', author: '', price: 0 }, cookie))).status, 400);
 
+    // Test add-book via multipart FormData
+    const addFd = new FormData();
+    addFd.append('action', 'add-book');
+    addFd.append('title', 'Unit Test Ebook');
+    addFd.append('subtitle', 'คู่มือทดสอบระบบ');
+    addFd.append('description', 'เนื้อหาทดสอบระบบเพิ่มหนังสือผ่านระบบผู้ดูแล SAFEMODE SHOP');
+    addFd.append('author', 'Tester');
+    addFd.append('price', '89');
+    addFd.append('file', new Blob(['sample epub content'], { type: 'application/epub+zip' }), 'test-book.epub');
+
+    const addReq = new Request(endpoint, {
+      method: 'POST',
+      headers: { Cookie: cookie, Origin: 'https://shop.example.org' },
+      body: addFd
+    });
+    const addRes = await adminApi.fetch(addReq);
+    assert.equal(addRes.status, 200);
+    const addedData = await addRes.json();
+    assert.ok(addedData.book.id.startsWith('unit-test-ebook'));
+
+    // Verify in overview
+    const overviewAfterAdd = await (await adminApi.fetch(request('?view=overview', undefined, cookie))).json();
+    assert.equal(overviewAfterAdd.books.length, 5);
+    const addedBookInList = overviewAfterAdd.books.find(b => b.id === addedData.book.id);
+    assert.ok(addedBookInList);
+    assert.equal(addedBookInList.fileName.endsWith('.epub'), true);
+
+    // Test delete-book
+    const delRes = await adminApi.fetch(request('', { action: 'delete-book', id: addedData.book.id }, cookie));
+    assert.equal(delRes.status, 200);
+
+    // Verify restored count
+    const overviewAfterDel = await (await adminApi.fetch(request('?view=overview', undefined, cookie))).json();
+    assert.equal(overviewAfterDel.books.length, 4);
+
     const id = `EB-${randomBytes(12).toString('hex').toUpperCase()}`;
     await createOrder({ id, book_id: 'tarot-app', book_ids: ['tarot-app'], customer_name: 'ลูกค้า ทดสอบ', email: 'admin-flow@example.test', status: 'PENDING', email_status: 'NOT_SENT', created_at: new Date().toISOString() });
     const marked = await adminApi.fetch(request('', { action: 'mark-paid', id }, cookie));
