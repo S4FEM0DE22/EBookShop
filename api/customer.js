@@ -1,4 +1,4 @@
-import { claimUsername, clearSessionCookie, customer, forgotPassword, login, register, resetPassword, sameOrigin, sessionCookie } from '../lib/customer-auth.js';
+import { claimUsername, clearSessionCookie, customer, forgotPassword, login, normalizeUserNames, register, resetPassword, sameOrigin, sessionCookie, updateCustomerProfile } from '../lib/customer-auth.js';
 import { body, cleanEmail, fail, json, orderView, validateEmail } from '../lib/http.js';
 import { listCustomerOrders, listAllBooks } from '../lib/store.js';
 
@@ -7,7 +7,18 @@ function reply(data, status = 200, cookie) {
   if (cookie) headers['Set-Cookie'] = cookie;
   return Response.json(data, { status, headers });
 }
-function publicUser(user) { return { name: user.name, email: user.email, username: user.username || null }; }
+function publicUser(user) {
+  const names = normalizeUserNames(user);
+  return {
+    name: names.name,
+    firstName: names.firstName,
+    lastName: names.lastName,
+    first_name: names.firstName,
+    last_name: names.lastName,
+    email: user.email,
+    username: user.username || null
+  };
+}
 const validUsername = value => typeof value === 'string' && /^[a-z0-9_]{3,24}$/.test(value);
 
 export default { async fetch(request) {
@@ -37,6 +48,23 @@ export default { async fetch(request) {
       if (!await claimUsername(user, username)) return json({ error: 'Username นี้มีคนใช้แล้ว' }, 409);
       return reply({ user: publicUser({ ...user, username }) }, 200, sessionCookie(request, { ...user, username }));
     }
+    if (input.action === 'update-profile') {
+      const user = await customer(request);
+      if (!user) return json({ error: 'กรุณาเข้าสู่ระบบ' }, 401);
+      const first = typeof input.first === 'string' ? input.first.trim() : (typeof input.firstName === 'string' ? input.firstName.trim() : '');
+      const last = typeof input.last === 'string' ? input.last.trim() : (typeof input.lastName === 'string' ? input.lastName.trim() : '');
+      if (!first) return json({ error: 'กรุณากรอกชื่อ' }, 400);
+      if (first.length > 80 || last.length > 80) return json({ error: 'ชื่อหรือนามสกุลยาวเกินไป (ไม่เกิน 80 ตัวอักษร)' }, 400);
+      let currentUsername = user.username;
+      if (!currentUsername && typeof input.username === 'string' && input.username.trim()) {
+        const claim = input.username.trim().toLowerCase();
+        if (!validUsername(claim)) return json({ error: 'Username ต้องมี 3–24 ตัว ใช้ a-z, 0-9 หรือ _' }, 400);
+        if (!await claimUsername(user, claim)) return json({ error: 'Username นี้มีคนใช้แล้ว' }, 409);
+        currentUsername = claim;
+      }
+      const updatedUser = await updateCustomerProfile({ ...user, username: currentUsername }, first, last);
+      return reply({ user: publicUser(updatedUser) }, 200, sessionCookie(request, updatedUser));
+    }
     if (input.action === 'reset-password') {
       const token = typeof input.token === 'string' ? input.token : '';
       const password = typeof input.password === 'string' ? input.password : '';
@@ -63,7 +91,10 @@ export default { async fetch(request) {
       const username = typeof input.username === 'string' ? input.username.trim().toLowerCase() : '';
       if (!validUsername(username) || !email) return json({ error: 'กรุณาตรวจ Username และอีเมล (Username ใช้ a-z, 0-9 หรือ _ จำนวน 3–24 ตัว)' }, 400);
       if (input.confirmPassword != null && input.confirmPassword !== password) return json({ error: 'รหัสผ่านทั้งสองช่องไม่ตรงกัน' }, 400);
-      const result = await register(username, email, password);
+      const first = typeof input.first === 'string' ? input.first.trim() : (typeof input.firstName === 'string' ? input.firstName.trim() : '');
+      const last = typeof input.last === 'string' ? input.last.trim() : (typeof input.lastName === 'string' ? input.lastName.trim() : '');
+      if (first.length > 80 || last.length > 80) return json({ error: 'ชื่อหรือนามสกุลยาวเกินไป (ไม่เกิน 80 ตัวอักษร)' }, 400);
+      const result = await register(username, email, password, first, last);
       if (result.confirmationRequired) return reply({ user: null, confirmationRequired: true }, 201);
       return reply({ user: publicUser(result.user), confirmationRequired: false }, 201, sessionCookie(request, result.user));
     }
