@@ -407,6 +407,11 @@ input[readonly]{background:#f2f5f8!important;color:#454545!important}
 
   .nav-pills{width:100%;justify-content:space-between;border-radius:32px;gap:5px;padding:6px}.nav-pills>a{min-width:0;flex:1;height:44px;padding:5px 7px;border-width:1px;font-size:.82rem}
   .nav-auth-action{width:44px;height:44px;padding:9px}.nav-auth-action svg{width:26px;height:26px}.cart-count{width:18px;height:18px;font-size:.65rem;margin-left:2px}
+  body.auth-active .site-header{flex-wrap:nowrap;justify-content:space-between}
+  body.auth-active .brand{margin:0}
+  body.auth-active .nav-pills{width:auto;display:flex;min-height:44px;padding:4px;border-radius:24px}
+  body.auth-active .nav-auth-action{width:36px;height:36px;border:1px solid rgba(255,255,255,0.2);border-radius:18px;padding:8px}
+  body.auth-active .nav-auth-action svg{width:18px;height:18px}
   main{padding-top:16px}.white-panel{border-radius:36px}.catalog-hero{border-radius:28px;padding:22px 20px;min-height:auto}.catalog-hero h1{font-size:clamp(1.85rem,5vw,2.6rem)}.catalog-hero-visual{display:none}
   .showcase-container{min-height:380px}.showcase-item{width:140px}.showcase-item.active{transform:scale(1.1)}.showcase-arrow{width:48px;height:48px;font-size:2rem}
   .detail-panel{grid-template-columns:1fr 1fr;gap:20px;padding:28px}.detail-cover{min-height:340px}.detail-cover .book-cover{transform:scale(1.1)}
@@ -433,6 +438,9 @@ input[readonly]{background:#f2f5f8!important;color:#454545!important}
   .nav-track-long{display:none}.nav-track-short{display:inline}
   .nav-auth-action{width:36px;height:36px;border:1px solid rgba(255,255,255,0.2);border-radius:18px;padding:8px}
   .nav-auth-action svg{width:18px;height:18px}
+  body.auth-active .site-header{flex-wrap:nowrap;justify-content:space-between;padding:8px 12px}
+  body.auth-active .brand{margin:0;height:42px;width:155px;min-width:155px}
+  body.auth-active .nav-pills{width:auto;display:flex;padding:3px;border-radius:20px}
   .page-heading{margin:14px auto}.page-heading h1{font-size:2.1rem}.page-heading p{font-size:.9rem}
   .catalog-hero{border-radius:22px;min-height:auto;padding:18px 14px;flex-direction:column;align-items:flex-start;text-align:left;gap:12px}.catalog-hero-content{text-align:left}.catalog-hero h1{font-size:1.65rem;margin:0 0 8px;text-align:left}.catalog-hero-sub{font-size:0.62em;margin-top:4px;text-align:left}.catalog-hero-desc{font-size:0.86rem;line-height:1.55;margin:0 0 14px;text-align:left}.catalog-hero-features{gap:6px 8px;justify-content:flex-start}.hero-pill{font-size:0.75rem;padding:4px 9px}.section-title{margin:20px 6px 14px}.section-title h2{font-size:1.45rem}.section-title span{font-size:.78rem}
   .product-grid{grid-template-columns:1fr;gap:14px;padding:0 4px 24px}.product-card{border-radius:16px;flex-direction:row;align-items:center}.product-cover{padding:12px;width:115px;height:148px;flex:none}.product-cover .book-cover{transform:none;box-shadow:none;width:100%;height:100%;aspect-ratio:696/900;object-fit:contain}.product-copy{padding:12px 14px 12px 0;min-height:148px}.product-copy h3{font-size:1rem;min-height:auto}.product-description{font-size:.82rem;margin:5px 0 10px;-webkit-line-clamp:2}.product-bottom{margin-top:auto;border-top:0;padding-top:4px}.product-bottom strong{font-size:1.05rem}.product-bottom .pill-button{height:35px;min-height:35px;min-width:104px;padding:0 12px;font-size:0.82rem}
