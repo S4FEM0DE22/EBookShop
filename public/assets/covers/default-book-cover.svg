@@ -1,0 +1,47 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 850" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#222222" />
+      <stop offset="50%" stop-color="#181818" />
+      <stop offset="100%" stop-color="#101010" />
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e2e8f0" />
+      <stop offset="100%" stop-color="#94a3b8" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="600" height="850" rx="12" fill="url(#bgGrad)"/>
+  
+  <!-- Outer border -->
+  <rect x="24" y="24" width="552" height="802" rx="8" fill="none" stroke="#333333" stroke-width="2" stroke-dasharray="6,6"/>
+  <rect x="36" y="36" width="528" height="778" rx="6" fill="none" stroke="#262626" stroke-width="1.5"/>
+  
+  <!-- Top brand pill -->
+  <g transform="translate(200, 80)">
+    <rect width="200" height="36" rx="18" fill="#262626" stroke="#404040" stroke-width="1"/>
+    <text x="100" y="23" fill="#cbd5e1" font-family="'Segoe UI', -apple-system, sans-serif" font-size="13" font-weight="700" letter-spacing="2" text-anchor="middle">SAFE MODE SHOP</text>
+  </g>
+  
+  <!-- Center Book Icon Graphic -->
+  <g transform="translate(240, 310)" filter="url(#shadow)">
+    <!-- Book silhouette -->
+    <rect x="0" y="0" width="120" height="150" rx="6" fill="#242424" stroke="#4a4a4a" stroke-width="2"/>
+    <path d="M15 20 L105 20 M15 35 L105 35 M15 50 L85 50 M15 65 L70 65" stroke="#404040" stroke-width="3" stroke-linecap="round"/>
+    <!-- Bookmark ribbon -->
+    <path d="M40 0 L40 60 L50 48 L60 60 L60 0 Z" fill="#e2e8f0"/>
+  </g>
+  
+  <!-- Main Title Area -->
+  <text x="300" y="540" fill="#f8fafc" font-family="'Segoe UI', -apple-system, sans-serif" font-size="28" font-weight="700" letter-spacing="1" text-anchor="middle">DIGITAL EDITION</text>
+  <text x="300" y="580" fill="#94a3b8" font-family="'Segoe UI', -apple-system, sans-serif" font-size="16" font-weight="500" letter-spacing="0.5" text-anchor="middle">หนังสืออิเล็กทรอนิกส์</text>
+  
+  <!-- Bottom Specs -->
+  <line x1="180" y1="640" x2="420" y2="640" stroke="#333333" stroke-width="1"/>
+  <text x="300" y="680" fill="#64748b" font-family="'Segoe UI', -apple-system, sans-serif" font-size="13" font-weight="600" letter-spacing="3" text-anchor="middle">E-BOOK / PDF / EPUB</text>
+  <text x="300" y="740" fill="#475569" font-family="'Segoe UI', -apple-system, sans-serif" font-size="12" text-anchor="middle">SAFEMODE VERIFIED PUBLICATION</text>
+</svg>
